@@ -38,8 +38,14 @@ class SmbLyricsRepository {
     private fun loadExternalLrc(config: SmbConfig, entry: SmbEntry, context: CIFSContext): LrcTimeline? {
         val parentPath = entry.fullPath.substringBeforeLast('/', "")
         val fileNameWithoutExt = entry.name.substringBeforeLast('.', entry.name)
-        val base = "smb://${config.host.trim()}/${config.share.trim()}".trimEnd('/')
-        val lrcPath = if (parentPath.isBlank()) "$base/$fileNameWithoutExt.lrc" else "$base/$parentPath/$fileNameWithoutExt.lrc"
+        val hostBase = "smb://${config.host.trim()}".trimEnd('/')
+        val share = config.share.trim()
+        val base = if (share.isBlank()) hostBase else "$hostBase/$share"
+        val lrcPath = if (parentPath.isBlank()) {
+            "$base/$fileNameWithoutExt.lrc"
+        } else {
+            "$hostBase/$parentPath/$fileNameWithoutExt.lrc"
+        }
         val lrcFile = SmbFile(lrcPath, context)
         if (!lrcFile.exists() || lrcFile.isDirectory) return null
 
@@ -95,4 +101,3 @@ class SmbLyricsRepository {
         }
     }
 }
-

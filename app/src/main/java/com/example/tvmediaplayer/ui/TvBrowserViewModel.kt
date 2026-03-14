@@ -1,4 +1,4 @@
-package com.example.tvmediaplayer.ui
+﻿package com.example.tvmediaplayer.ui
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.tvmediaplayer.data.repo.JcifsSmbRepository
 import com.example.tvmediaplayer.data.repo.SmbConfigStore
 import com.example.tvmediaplayer.data.repo.SmbFailureMapper
+import com.example.tvmediaplayer.domain.model.SavedSmbConnection
 import com.example.tvmediaplayer.domain.model.SmbConfig
 import com.example.tvmediaplayer.domain.model.SmbEntry
 import com.example.tvmediaplayer.domain.repo.SmbRepository
@@ -18,6 +19,8 @@ import kotlinx.coroutines.launch
 
 data class TvBrowserState(
     val config: SmbConfig = SmbConfig.Empty,
+    val savedConnections: List<SavedSmbConnection> = emptyList(),
+    val activeConnectionId: String? = null,
     val currentPath: String = "",
     val entries: List<SmbEntry> = emptyList(),
     val loading: Boolean = false,
@@ -35,26 +38,65 @@ class TvBrowserViewModel(
 
     init {
         viewModelScope.launch {
-            val config = configStore.load()
-            _state.update { it.copy(config = config, currentPath = config.normalizedPath()) }
-            if (config.host.isNotBlank() && config.share.isNotBlank()) {
+            val loaded = configStore.loadState()
+            _state.update {
+                it.copy(
+                    config = loaded.activeConfig,
+                    currentPath = loaded.activeConfig.normalizedPath(),
+                    savedConnections = loaded.savedConnections,
+                    activeConnectionId = loaded.activeConnectionId
+                )
+            }
+            if (loaded.activeConfig.host.isNotBlank()) {
                 loadCurrentPath()
             }
         }
     }
 
-    fun saveConfig(config: SmbConfig) {
-        _state.update { it.copy(config = config, currentPath = config.normalizedPath(), error = null) }
+    fun saveConfig(config: SmbConfig, name: String) {
+        val id = _state.value.activeConnectionId ?: configStore.newConnectionId()
+        val actualName = name.ifBlank { defaultConnectionName(config) }
+        val saved = SavedSmbConnection(id = id, name = actualName, config = config)
+
+        _state.update {
+            val mutable = it.savedConnections.toMutableList()
+            val index = mutable.indexOfFirst { c -> c.id == id }
+            if (index >= 0) mutable[index] = saved else mutable.add(saved)
+            it.copy(
+                config = config,
+                currentPath = config.normalizedPath(),
+                activeConnectionId = id,
+                savedConnections = mutable,
+                error = null
+            )
+        }
+
         viewModelScope.launch {
-            configStore.save(config)
+            configStore.saveConnection(saved, activate = true)
+        }
+        loadCurrentPath()
+    }
+
+    fun switchConnection(connectionId: String) {
+        val target = _state.value.savedConnections.firstOrNull { it.id == connectionId } ?: return
+        _state.update {
+            it.copy(
+                config = target.config,
+                currentPath = target.config.normalizedPath(),
+                activeConnectionId = target.id,
+                error = null
+            )
+        }
+        viewModelScope.launch {
+            configStore.setActiveConnection(connectionId)
         }
         loadCurrentPath()
     }
 
     fun loadCurrentPath() {
         val snapshot = _state.value
-        if (snapshot.config.host.isBlank() || snapshot.config.share.isBlank()) {
-            _state.update { it.copy(error = "SMB 主机地址和共享名不能为空") }
+        if (snapshot.config.host.isBlank()) {
+            _state.update { it.copy(error = "SMB host is required") }
             return
         }
         viewModelScope.launch {
@@ -72,20 +114,22 @@ class TvBrowserViewModel(
 
     fun enterDirectory(entry: SmbEntry) {
         if (!entry.isDirectory) {
-            _state.update { it.copy(toast = "TODO：播放 ${entry.name}") }
+            _state.update { it.copy(toast = "TODO: play ${entry.name}") }
             return
         }
         val current = _state.value.currentPath
-        val nextPath = when {
-            entry.name == ".." -> current.substringBeforeLast('/', "")
-            else -> entry.fullPath
-        }
+        val nextPath = if (entry.name == "..") current.substringBeforeLast('/', "") else entry.fullPath
         _state.update { it.copy(currentPath = nextPath) }
         loadCurrentPath()
     }
 
     fun consumeToast() {
         _state.update { it.copy(toast = null) }
+    }
+
+    private fun defaultConnectionName(config: SmbConfig): String {
+        val share = config.share.ifBlank { "all-shares" }
+        return "${config.host} / $share"
     }
 
     companion object {

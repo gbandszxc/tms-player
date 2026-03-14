@@ -1,29 +1,27 @@
-package com.example.tvmediaplayer.ui
+﻿package com.example.tvmediaplayer.ui
 
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.os.Bundle
 import android.text.InputType
 import android.view.KeyEvent
-import android.view.Gravity
 import android.view.View
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.fragment.app.viewModels
-import androidx.leanback.app.BrowseSupportFragment
+import androidx.leanback.app.VerticalGridSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
-import androidx.leanback.widget.HeaderItem
-import androidx.leanback.widget.ListRow
-import androidx.leanback.widget.ListRowPresenter
+import androidx.leanback.widget.VerticalGridPresenter
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.example.tvmediaplayer.domain.model.SmbConfig
 import com.example.tvmediaplayer.domain.model.SmbEntry
-import com.example.tvmediaplayer.playback.SmbMediaItemFactory
 import com.example.tvmediaplayer.playback.PlaybackQueueBuilder
 import com.example.tvmediaplayer.playback.PlaybackService
+import com.example.tvmediaplayer.playback.SmbMediaItemFactory
 import com.example.tvmediaplayer.ui.presenter.SimpleTextPresenter
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -31,24 +29,25 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class TvBrowseFragment : BrowseSupportFragment() {
+class TvBrowseFragment : VerticalGridSupportFragment() {
 
     private val viewModel by viewModels<TvBrowserViewModel> {
         TvBrowserViewModel.factory(requireContext().applicationContext)
     }
-    private val rowsAdapter by lazy { ArrayObjectAdapter(ListRowPresenter()) }
+    private val listAdapter by lazy { ArrayObjectAdapter(SimpleTextPresenter()) }
     private val mediaItemFactory by lazy { SmbMediaItemFactory() }
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = "电视音乐播放器"
-        headersState = HEADERS_DISABLED
-        isHeadersTransitionOnBackEnabled = false
-        brandColor = 0xFF22C55E.toInt()
+        title = "TV Music Player"
 
-        adapter = rowsAdapter
+        gridPresenter = VerticalGridPresenter().apply {
+            numberOfColumns = 1
+        }
+        adapter = listAdapter
+
         setOnItemViewClickedListener { _, item, _, _ ->
             when (item) {
                 is UiItem.ActionItem -> onActionClicked(item)
@@ -82,12 +81,10 @@ class TvBrowseFragment : BrowseSupportFragment() {
                         false
                     }
                 }
-
                 KeyEvent.KEYCODE_MENU -> {
                     showConfigDialog()
                     true
                 }
-
                 else -> false
             }
         }
@@ -104,49 +101,47 @@ class TvBrowseFragment : BrowseSupportFragment() {
     }
 
     private fun render(state: TvBrowserState) {
-        rowsAdapter.clear()
+        listAdapter.clear()
 
-        val configRow = ArrayObjectAdapter(SimpleTextPresenter()).apply {
-            add(UiItem.ActionItem(Action.EDIT_CONFIG, "连接：${configText(state.config)}"))
-            add(UiItem.ActionItem(Action.REFRESH, "刷新当前目录"))
-            if (state.error != null) {
-                add(UiItem.ActionItem(Action.RETRY, "重试连接"))
-            }
-            add(UiItem.ActionItem(Action.PLAY_ALL, "播放当前目录（顺序）"))
-            add(UiItem.ActionItem(Action.PLAY_SHUFFLE, "播放当前目录（随机）"))
+        listAdapter.add("== Connection & Actions ==")
+        listAdapter.add(UiItem.ActionItem(Action.EDIT_CONFIG, "Connection: ${configText(state.config)}"))
+        listAdapter.add(UiItem.ActionItem(Action.SWITCH_CONFIG, "Switch saved connections (${state.savedConnections.size})"))
+        listAdapter.add(UiItem.ActionItem(Action.REFRESH, "Refresh current directory"))
+        if (state.error != null) {
+            listAdapter.add(UiItem.ActionItem(Action.RETRY, "Retry connection"))
         }
-        rowsAdapter.add(ListRow(HeaderItem(0, "连接与操作"), configRow))
+        listAdapter.add(UiItem.ActionItem(Action.PLAY_ALL, "Play current directory (sequential)"))
+        listAdapter.add(UiItem.ActionItem(Action.PLAY_SHUFFLE, "Play current directory (shuffle)"))
 
         val pathLabel = if (state.currentPath.isBlank()) "/" else "/${state.currentPath}"
-        val browserRow = ArrayObjectAdapter(SimpleTextPresenter())
+        listAdapter.add("== Files: $pathLabel ==")
+
         if (state.loading) {
-            browserRow.add("加载中...")
+            listAdapter.add("Loading...")
         } else {
             if (state.currentPath.isNotBlank()) {
-                browserRow.add(UiItem.FileItem(SmbEntry("..", state.currentPath, true), "[目录] ..（上一级）"))
+                listAdapter.add(UiItem.FileItem(SmbEntry("..", state.currentPath, true), "[DIR] .. (up)"))
             }
             if (state.entries.isEmpty()) {
-                browserRow.add("当前目录为空")
+                listAdapter.add("Current directory is empty")
             } else {
-                state.entries.filterNot { it.name == ".." }.forEach { entry ->
-                    val icon = if (entry.isDirectory) "[目录]" else "[音频]"
-                    browserRow.add(UiItem.FileItem(entry, "$icon ${entry.name}"))
+                state.entries.forEach { entry ->
+                    val icon = if (entry.isDirectory) "[DIR]" else "[AUDIO]"
+                    listAdapter.add(UiItem.FileItem(entry, "$icon ${entry.name}"))
                 }
             }
         }
-        rowsAdapter.add(ListRow(HeaderItem(1, "浏览：$pathLabel"), browserRow))
 
         state.error?.let {
-            val errorRow = ArrayObjectAdapter(SimpleTextPresenter()).apply {
-                add("错误：$it")
-            }
-            rowsAdapter.add(ListRow(HeaderItem(2, "连接状态"), errorRow))
+            listAdapter.add("== Error ==")
+            listAdapter.add(it)
         }
     }
 
     private fun onActionClicked(item: UiItem.ActionItem) {
         when (item.action) {
             Action.EDIT_CONFIG -> showConfigDialog()
+            Action.SWITCH_CONFIG -> showSwitchDialog()
             Action.REFRESH -> viewModel.loadCurrentPath()
             Action.RETRY -> viewModel.loadCurrentPath()
             Action.PLAY_ALL -> playDirectory(shuffle = false)
@@ -171,12 +166,12 @@ class TvBrowseFragment : BrowseSupportFragment() {
 
     private fun playQueue(queue: List<SmbEntry>, startIndex: Int, shuffle: Boolean) {
         if (queue.isEmpty()) {
-            Toast.makeText(requireContext(), "当前目录没有可播放音频", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "No playable audio in current directory", Toast.LENGTH_SHORT).show()
             return
         }
         val controller = mediaController
         if (controller == null) {
-            Toast.makeText(requireContext(), "播放器初始化中，请稍后重试", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Player is initializing, retry shortly", Toast.LENGTH_SHORT).show()
             ensureController()
             return
         }
@@ -208,7 +203,7 @@ class TvBrowseFragment : BrowseSupportFragment() {
                     .onSuccess { controller -> mediaController = controller }
                     .onFailure {
                         controllerFuture = null
-                        Toast.makeText(requireContext(), "播放器连接失败", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "Failed to connect player", Toast.LENGTH_SHORT).show()
                     }
             },
             MoreExecutors.directExecutor()
@@ -216,58 +211,80 @@ class TvBrowseFragment : BrowseSupportFragment() {
     }
 
     private fun releaseController() {
-        controllerFuture?.let {
-            MediaController.releaseFuture(it)
-        }
+        controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
         mediaController = null
+    }
+
+    private fun showSwitchDialog() {
+        val saved = viewModel.state.value.savedConnections
+        if (saved.isEmpty()) {
+            Toast.makeText(requireContext(), "No saved connection yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val labels = saved.map { "${it.name} (${it.config.host})" }.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle("Switch SMB connection")
+            .setItems(labels) { _, which ->
+                viewModel.switchConnection(saved[which].id)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showConfigDialog() {
         val current = viewModel.state.value.config
         val context = requireContext()
 
+        val nameInput = EditText(context).apply {
+            hint = "Connection name, e.g. Home NAS"
+            typeface = AppFonts.regular(context)
+            val active = viewModel.state.value.savedConnections
+                .firstOrNull { it.id == viewModel.state.value.activeConnectionId }
+            setText(active?.name.orEmpty())
+        }
         val hostInput = EditText(context).apply {
-            hint = "服务器 IP，例如 192.168.31.233"
+            hint = "Server host, e.g. 192.168.0.10"
             typeface = AppFonts.regular(context)
             setText(current.host)
         }
         val shareInput = EditText(context).apply {
-            hint = "共享名，例如 Banana"
+            hint = "Share name (optional; empty shows all shares)"
             typeface = AppFonts.regular(context)
             setText(current.share)
         }
         val pathInput = EditText(context).apply {
-            hint = "子目录，例如 h/DLsite"
+            hint = "Sub path (optional)"
             typeface = AppFonts.regular(context)
             setText(current.path)
         }
         val userInput = EditText(context).apply {
-            hint = "用户名（访客可留空）"
+            hint = "Username (optional for guest)"
             typeface = AppFonts.regular(context)
             setText(current.username)
         }
         val passInput = EditText(context).apply {
-            hint = "密码（访客可留空）"
+            hint = "Password (optional for guest)"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             typeface = AppFonts.regular(context)
             setText(current.password)
         }
         val guestCheck = CheckBox(context).apply {
-            text = "访客 / 匿名"
+            text = "Guest / Anonymous"
             typeface = AppFonts.regular(context)
             isChecked = current.guest
         }
         val smb1Check = CheckBox(context).apply {
-            text = "启用 SMB1 兼容（默认关闭）"
+            text = "Enable SMB1 compatibility (off by default)"
             typeface = AppFonts.regular(context)
             isChecked = current.smb1Enabled
         }
 
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
             setPadding(36, 20, 36, 20)
+            addView(nameInput)
             addView(hostInput)
             addView(shareInput)
             addView(pathInput)
@@ -277,11 +294,11 @@ class TvBrowseFragment : BrowseSupportFragment() {
             addView(smb1Check)
         }
 
-        android.app.AlertDialog.Builder(context)
-            .setTitle("SMB 连接")
+        AlertDialog.Builder(context)
+            .setTitle("SMB connection")
             .setView(container)
-            .setNegativeButton("取消", null)
-            .setPositiveButton("保存并连接") { _, _ ->
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save and connect") { _, _ ->
                 val config = SmbConfig(
                     host = hostInput.text.toString().trim(),
                     share = shareInput.text.toString().trim(),
@@ -291,18 +308,19 @@ class TvBrowseFragment : BrowseSupportFragment() {
                     guest = guestCheck.isChecked,
                     smb1Enabled = smb1Check.isChecked
                 )
-                viewModel.saveConfig(config)
+                viewModel.saveConfig(config, nameInput.text.toString().trim())
             }
             .show()
     }
 
     private fun configText(config: SmbConfig): String {
-        if (config.host.isBlank() || config.share.isBlank()) return "未配置"
-        val path = config.normalizedPath()
-        return if (path.isBlank()) {
-            "smb://${config.host}/${config.share}"
+        if (config.host.isBlank()) return "Not configured"
+        return if (config.share.isBlank()) {
+            "smb://${config.host} (all shares)"
         } else {
-            "smb://${config.host}/${config.share}/$path"
+            val path = config.normalizedPath()
+            if (path.isBlank()) "smb://${config.host}/${config.share}"
+            else "smb://${config.host}/${config.share}/$path"
         }
     }
 
@@ -318,6 +336,7 @@ class TvBrowseFragment : BrowseSupportFragment() {
 
     private enum class Action {
         EDIT_CONFIG,
+        SWITCH_CONFIG,
         REFRESH,
         RETRY,
         PLAY_ALL,

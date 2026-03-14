@@ -9,7 +9,6 @@ import jcifs.CIFSContext
 import jcifs.config.PropertyConfiguration
 import jcifs.context.BaseContext
 import jcifs.smb.NtlmPasswordAuthenticator
-import jcifs.smb.SmbException
 import jcifs.smb.SmbFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,19 +16,40 @@ import kotlinx.coroutines.withContext
 class JcifsSmbRepository : SmbRepository {
 
     override suspend fun list(config: SmbConfig, path: String): List<SmbEntry> = withContext(Dispatchers.IO) {
-        require(config.host.isNotBlank() && config.share.isNotBlank()) {
-            "SMB 主机地址和共享名不能为空"
+        require(config.host.isNotBlank()) {
+            "SMB 主机地址不能为空"
         }
 
         val currentPath = path.trim('/').ifBlank { config.normalizedPath() }
-        val url = buildDirectoryUrl(config, currentPath)
+        val target = resolveTarget(config, currentPath)
         val context = buildContext(config)
-        val directory = SmbFile(url, context)
+        val directory = SmbFile(target.url, context)
 
         listWithRetry(directory)
             .orEmpty()
             .sortedBy { it.name.lowercase() }
-            .mapNotNull { file -> mapToEntry(file, currentPath) }
+            .mapNotNull { file -> mapToEntry(file, target.pathPrefix) }
+    }
+
+    private fun resolveTarget(config: SmbConfig, currentPath: String): TargetLocation {
+        val host = config.host.trim()
+        val configuredShare = config.share.trim()
+
+        if (configuredShare.isNotBlank()) {
+            val base = "smb://$host/$configuredShare".trimEnd('/')
+            val url = if (currentPath.isBlank()) "$base/" else "$base/$currentPath/"
+            return TargetLocation(url = url, pathPrefix = currentPath)
+        }
+
+        if (currentPath.isBlank()) {
+            return TargetLocation(url = "smb://$host/", pathPrefix = "")
+        }
+
+        val dynamicShare = currentPath.substringBefore('/')
+        val subPath = currentPath.substringAfter('/', "")
+        val base = "smb://$host/$dynamicShare".trimEnd('/')
+        val url = if (subPath.isBlank()) "$base/" else "$base/$subPath/"
+        return TargetLocation(url = url, pathPrefix = currentPath)
     }
 
     private fun listWithRetry(directory: SmbFile): Array<SmbFile>? {
@@ -41,8 +61,7 @@ class JcifsSmbRepository : SmbRepository {
         val retryable = failure == SmbFailure.TIMEOUT || failure == SmbFailure.HOST_UNREACHABLE
         if (!retryable) throw firstError
 
-        return runCatching { directory.listFiles() }
-            .getOrElse { throw it }
+        return runCatching { directory.listFiles() }.getOrElse { throw it }
     }
 
     private fun mapToEntry(file: SmbFile, currentPath: String): SmbEntry? {
@@ -63,12 +82,6 @@ class JcifsSmbRepository : SmbRepository {
         }
     }
 
-    private fun buildDirectoryUrl(config: SmbConfig, path: String): String {
-        val base = "smb://${config.host.trim()}/${config.share.trim()}"
-        val withPath = if (path.isBlank()) base else "$base/$path"
-        return "${withPath.trimEnd('/')}/"
-    }
-
     private fun buildContext(config: SmbConfig): CIFSContext {
         val properties = Properties().apply {
             setProperty("jcifs.smb.client.responseTimeout", "10000")
@@ -86,13 +99,7 @@ class JcifsSmbRepository : SmbRepository {
         return if (config.guest) {
             base.withCredentials(NtlmPasswordAuthenticator("", ""))
         } else {
-            base.withCredentials(
-                NtlmPasswordAuthenticator(
-                    "",
-                    config.username.trim(),
-                    config.password
-                )
-            )
+            base.withCredentials(NtlmPasswordAuthenticator("", config.username.trim(), config.password))
         }
     }
 
@@ -108,4 +115,7 @@ class JcifsSmbRepository : SmbRepository {
 
     private fun combinePath(base: String, child: String): String =
         if (base.isBlank()) child else "$base/$child"
+
+    private data class TargetLocation(val url: String, val pathPrefix: String)
 }
+

@@ -27,7 +27,7 @@ class SmbMediaItemFactory {
                 .setMediaMetadata(
                     MediaMetadata.Builder()
                         .setTitle(parseTitle(entry.name))
-                        .setArtist(config.share)
+                        .setArtist(config.share.ifBlank { config.host })
                         .setAlbumTitle(parseAlbum(config, entry.fullPath))
                         .setArtworkUri(artworkUri?.let(Uri::parse))
                         .build()
@@ -40,7 +40,8 @@ class SmbMediaItemFactory {
 
     internal fun parseAlbum(config: SmbConfig, fullPath: String): String {
         val parent = fullPath.substringBeforeLast('/', "")
-        return if (parent.isBlank()) config.share else parent.substringAfterLast('/')
+        val fallback = config.share.ifBlank { "SMB" }
+        return if (parent.isBlank()) fallback else parent.substringAfterLast('/')
     }
 
     private fun resolveArtworkUri(config: SmbConfig, directoryPath: String, context: CIFSContext): String? {
@@ -59,8 +60,14 @@ class SmbMediaItemFactory {
     }
 
     private fun buildDirectoryBase(config: SmbConfig, path: String): String {
-        val base = "smb://${config.host.trim()}/${config.share.trim()}".trimEnd('/')
-        return if (path.isBlank()) base else "$base/$path"
+        val hostBase = "smb://${config.host.trim()}".trimEnd('/')
+        val share = config.share.trim()
+        return when {
+            share.isNotBlank() && path.isBlank() -> "$hostBase/$share"
+            share.isNotBlank() -> "$hostBase/$share/$path"
+            path.isBlank() -> hostBase
+            else -> "$hostBase/$path"
+        }
     }
 
     private fun buildContext(config: SmbConfig): CIFSContext {

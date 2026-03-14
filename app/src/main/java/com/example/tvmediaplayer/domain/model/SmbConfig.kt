@@ -12,7 +12,13 @@ data class SmbConfig(
     fun normalizedPath(): String = path.trim().replace("\\", "/").trim('/')
 
     fun rootUrl(): String {
-        val base = "smb://${host.trim()}/${share.trim()}"
+        val hostPart = host.trim()
+        val sharePart = share.trim()
+        val base = if (sharePart.isBlank()) {
+            "smb://$hostPart"
+        } else {
+            "smb://$hostPart/$sharePart"
+        }
         val sub = normalizedPath()
         return if (sub.isBlank()) base else "$base/$sub"
     }

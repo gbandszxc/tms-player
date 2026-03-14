@@ -3,7 +3,7 @@
 ## 已完成事项（截至 2026-03-14）
 
 1. 初始化 Android TV 项目骨架并接入 Gradle Wrapper（8.7）。
-2. 完成 Leanback 首页浏览框架（`BrowseSupportFragment`）。
+2. 完成 Leanback 首页浏览框架（当前为 `VerticalGridSupportFragment` 单列模式）。
 3. 落地 SMB 浏览领域模型与仓库接口（已在 Phase 1 切换为 `jcifs-ng` 真实仓库）。
 4. 增加歌词 LRC 解析器基础实现。
 5. 构建参数固定为 JDK 17，ABI 限定 `arm64-v8a`。
@@ -30,6 +30,9 @@
 26. 已增加错误态快速重试入口（列表操作区出现“重试连接”）。
 27. SMB 目录读取加入弱网重试策略（超时/不可达场景自动重试一次）。
 28. 已完成 Phase 6（交付收敛）：新增发布验收清单 `spec/release-checklist.md`。
+29. SMB 浏览页已改为纵向单列列表（VerticalGridSupportFragment），文件项按竖向排列。
+30. SMB 配置支持共享名留空；留空时可浏览服务器暴露的共享根目录。
+31. SMB 配置支持保存多个连接并在页面内快速切换激活连接。
 
 ## 1. 当前项目定位
 
@@ -64,7 +67,7 @@ tv-media-player/
 │     ├─ java/com/example/tvmediaplayer/
 │     │  ├─ MainActivity.kt
 │     │  ├─ data/repo/{FakeSmbRepository.kt,JcifsSmbRepository.kt,SmbConfigStore.kt,SmbFailureMapper.kt}
-│     │  ├─ domain/model/{SmbConfig.kt,SmbEntry.kt}
+│     │  ├─ domain/model/{SmbConfig.kt,SmbEntry.kt,SavedSmbConnection.kt}
 │     │  ├─ domain/repo/SmbRepository.kt
 │     │  ├─ lyrics/{LrcParser.kt,SmbLyricsRepository.kt}
 │     │  ├─ playback/{PlaybackService.kt,PlaybackQueueBuilder.kt,SmbMediaItemFactory.kt}
@@ -81,7 +84,7 @@ tv-media-player/
 └─ spec/
    ├─ plan.md
    ├─ next-steps.md
-   └─ design.md
+   ├─ design.md
    └─ release-checklist.md
 ```
 
@@ -155,3 +158,5 @@ TV Release: app\build\outputs\apk\tv\release\app-tv-release.apk
 5. 歌词 UI（滚动/高亮）尚未接入播放页，仅完成歌词数据读取与时间轴能力。
 6. 播放页 UI 与大屏信息层级细化尚未完成（当前以列表页 + 通知播放为主）。
 7. 已可产出已签名 release，但仍建议补充签名校验与安装回归测试流程。
+
+

@@ -10,6 +10,8 @@
 6. 已验证 `assembleDebug` 可成功打包。
 7. 已接入 release 签名配置并产出已签名 `app-release.apk`。
 8. 已增加 product flavors：`dev`（开发联调）与 `tv`（电视约束）。
+9. 已完成首轮中文化：主界面与 SMB 配置弹窗文案改为中文（保留 `SMB` 等专有名词）。
+10. 已接入内嵌 MiSans 字体（Regular/Medium/Bold）并在主题与列表项中启用。
 
 ## 1. 当前项目定位
 
@@ -53,6 +55,7 @@ tv-media-player/
 │     │     └─ presenter/SimpleTextPresenter.kt
 │     └─ res/
 │        ├─ layout/activity_main.xml
+│        ├─ font/{misans_regular.ttf,misans_medium.ttf,misans_bold.ttf,misans_family.xml}
 │        ├─ values/{strings.xml,colors.xml,themes.xml}
 │        ├─ drawable/{ic_launcher_foreground.xml,tv_banner.xml}
 │        └─ mipmap-anydpi-v26/{ic_launcher.xml,ic_launcher_round.xml}

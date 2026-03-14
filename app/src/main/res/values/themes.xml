@@ -3,5 +3,7 @@
         <item name="android:windowBackground">#0F0F23</item>
         <item name="defaultBrandColor">#22C55E</item>
         <item name="defaultSearchColor">#4338CA</item>
+        <item name="android:fontFamily">@font/misans_family</item>
+        <item name="fontFamily">@font/misans_family</item>
     </style>
 </resources>

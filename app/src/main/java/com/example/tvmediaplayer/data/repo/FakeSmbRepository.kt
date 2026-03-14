@@ -1,5 +1,6 @@
 package com.example.tvmediaplayer.data.repo
 
+import android.net.Uri
 import com.example.tvmediaplayer.domain.model.SmbConfig
 import com.example.tvmediaplayer.domain.model.SmbEntry
 import com.example.tvmediaplayer.domain.repo.SmbRepository
@@ -9,26 +10,28 @@ class FakeSmbRepository : SmbRepository {
     override suspend fun list(config: SmbConfig, path: String): List<SmbEntry> {
         delay(180)
         if (config.host.isBlank() || config.share.isBlank()) {
-            throw IllegalArgumentException("SMB host/share is required")
+            throw IllegalArgumentException("SMB 主机地址和共享名不能为空")
         }
 
         val nowPath = path.trim('/').ifBlank { config.normalizedPath() }
         val prefix = if (nowPath.isBlank()) "" else "$nowPath/"
+        val demoTrack1 = "01 - 序章.flac"
+        val demoTrack2 = "02 - 主题.mp3"
         return listOf(
             SmbEntry(name = "..", fullPath = nowPath, isDirectory = true),
             SmbEntry(name = "ACG", fullPath = "${prefix}ACG", isDirectory = true),
-            SmbEntry(name = "Classics", fullPath = "${prefix}Classics", isDirectory = true),
+            SmbEntry(name = "古典音乐", fullPath = "${prefix}古典音乐", isDirectory = true),
             SmbEntry(
-                name = "01 - intro.flac",
-                fullPath = "${prefix}01 - intro.flac",
+                name = demoTrack1,
+                fullPath = "${prefix}${demoTrack1}",
                 isDirectory = false,
-                streamUri = "${config.rootUrl()}/01%20-%20intro.flac"
+                streamUri = "${config.rootUrl()}/${Uri.encode(demoTrack1)}"
             ),
             SmbEntry(
-                name = "02 - theme.mp3",
-                fullPath = "${prefix}02 - theme.mp3",
+                name = demoTrack2,
+                fullPath = "${prefix}${demoTrack2}",
                 isDirectory = false,
-                streamUri = "${config.rootUrl()}/02%20-%20theme.mp3"
+                streamUri = "${config.rootUrl()}/${Uri.encode(demoTrack2)}"
             )
         )
     }

@@ -26,7 +26,7 @@ class TvBrowseFragment : BrowseSupportFragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = "TV Music Player"
+        title = "电视音乐播放器"
         headersState = HEADERS_DISABLED
         isHeadersTransitionOnBackEnabled = false
         brandColor = 0xFF22C55E.toInt()
@@ -54,35 +54,35 @@ class TvBrowseFragment : BrowseSupportFragment() {
         rowsAdapter.clear()
 
         val configRow = ArrayObjectAdapter(SimpleTextPresenter()).apply {
-            add(UiItem.ActionItem(Action.EDIT_CONFIG, "Connection: ${configText(state.config)}"))
-            add(UiItem.ActionItem(Action.REFRESH, "Refresh current folder"))
+            add(UiItem.ActionItem(Action.EDIT_CONFIG, "连接：${configText(state.config)}"))
+            add(UiItem.ActionItem(Action.REFRESH, "刷新当前目录"))
         }
-        rowsAdapter.add(ListRow(HeaderItem(0, "Connection and Actions"), configRow))
+        rowsAdapter.add(ListRow(HeaderItem(0, "连接与操作"), configRow))
 
         val pathLabel = if (state.currentPath.isBlank()) "/" else "/${state.currentPath}"
         val browserRow = ArrayObjectAdapter(SimpleTextPresenter())
         if (state.loading) {
-            browserRow.add("Loading...")
+            browserRow.add("加载中...")
         } else {
             if (state.currentPath.isNotBlank()) {
-                browserRow.add(UiItem.FileItem(SmbEntry("..", state.currentPath, true), "[DIR] .. (Parent)"))
+                browserRow.add(UiItem.FileItem(SmbEntry("..", state.currentPath, true), "[目录] ..（上一级）"))
             }
             if (state.entries.isEmpty()) {
-                browserRow.add("No files")
+                browserRow.add("当前目录为空")
             } else {
                 state.entries.filterNot { it.name == ".." }.forEach { entry ->
-                    val icon = if (entry.isDirectory) "[DIR]" else "[AUDIO]"
+                    val icon = if (entry.isDirectory) "[目录]" else "[音频]"
                     browserRow.add(UiItem.FileItem(entry, "$icon ${entry.name}"))
                 }
             }
         }
-        rowsAdapter.add(ListRow(HeaderItem(1, "Browser: $pathLabel"), browserRow))
+        rowsAdapter.add(ListRow(HeaderItem(1, "浏览：$pathLabel"), browserRow))
 
         state.error?.let {
             val errorRow = ArrayObjectAdapter(SimpleTextPresenter()).apply {
-                add("Error: $it")
+                add("错误：$it")
             }
-            rowsAdapter.add(ListRow(HeaderItem(2, "Connection status"), errorRow))
+            rowsAdapter.add(ListRow(HeaderItem(2, "连接状态"), errorRow))
         }
     }
 
@@ -98,28 +98,34 @@ class TvBrowseFragment : BrowseSupportFragment() {
         val context = requireContext()
 
         val hostInput = EditText(context).apply {
-            hint = "Server IP, e.g. 192.168.31.233"
+            hint = "服务器 IP，例如 192.168.31.233"
+            typeface = AppFonts.regular(context)
             setText(current.host)
         }
         val shareInput = EditText(context).apply {
-            hint = "Share name, e.g. Banana"
+            hint = "共享名，例如 Banana"
+            typeface = AppFonts.regular(context)
             setText(current.share)
         }
         val pathInput = EditText(context).apply {
-            hint = "Sub path, e.g. h/DLsite"
+            hint = "子目录，例如 h/DLsite"
+            typeface = AppFonts.regular(context)
             setText(current.path)
         }
         val userInput = EditText(context).apply {
-            hint = "Username (empty for guest)"
+            hint = "用户名（访客可留空）"
+            typeface = AppFonts.regular(context)
             setText(current.username)
         }
         val passInput = EditText(context).apply {
-            hint = "Password (empty for guest)"
+            hint = "密码（访客可留空）"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            typeface = AppFonts.regular(context)
             setText(current.password)
         }
         val guestCheck = CheckBox(context).apply {
-            text = "Guest / Anonymous"
+            text = "访客 / 匿名"
+            typeface = AppFonts.regular(context)
             isChecked = current.guest
         }
 
@@ -136,10 +142,10 @@ class TvBrowseFragment : BrowseSupportFragment() {
         }
 
         android.app.AlertDialog.Builder(context)
-            .setTitle("SMB Connection")
+            .setTitle("SMB 连接")
             .setView(container)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save and Connect") { _, _ ->
+            .setNegativeButton("取消", null)
+            .setPositiveButton("保存并连接") { _, _ ->
                 val config = SmbConfig(
                     host = hostInput.text.toString().trim(),
                     share = shareInput.text.toString().trim(),
@@ -154,7 +160,7 @@ class TvBrowseFragment : BrowseSupportFragment() {
     }
 
     private fun configText(config: SmbConfig): String {
-        if (config.host.isBlank() || config.share.isBlank()) return "Not configured"
+        if (config.host.isBlank() || config.share.isBlank()) return "未配置"
         val path = config.normalizedPath()
         return if (path.isBlank()) {
             "smb://${config.host}/${config.share}"

@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.leanback.widget.Presenter
+import com.example.tvmediaplayer.ui.AppFonts
 
 class SimpleTextPresenter : Presenter() {
     override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
@@ -15,6 +16,7 @@ class SimpleTextPresenter : Presenter() {
             )
             setPadding(32, 20, 32, 20)
             textSize = 20f
+            typeface = AppFonts.medium(parent.context)
             setTextColor(Color.parseColor("#F8FAFC"))
             isFocusable = true
             isFocusableInTouchMode = true

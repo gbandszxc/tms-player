@@ -36,7 +36,7 @@ class TvBrowserViewModel(
     fun loadCurrentPath() {
         val snapshot = _state.value
         if (snapshot.config.host.isBlank() || snapshot.config.share.isBlank()) {
-            _state.update { it.copy(error = "SMB host/share is required") }
+            _state.update { it.copy(error = "SMB 主机地址和共享名不能为空") }
             return
         }
         viewModelScope.launch {
@@ -46,14 +46,14 @@ class TvBrowserViewModel(
             }.onSuccess { list ->
                 _state.update { it.copy(entries = list, loading = false) }
             }.onFailure { ex ->
-                _state.update { it.copy(loading = false, error = ex.message ?: "SMB browse failed") }
+                _state.update { it.copy(loading = false, error = ex.message ?: "SMB 浏览失败") }
             }
         }
     }
 
     fun enterDirectory(entry: SmbEntry) {
         if (!entry.isDirectory) {
-            _state.update { it.copy(toast = "TODO: Play ${entry.name}") }
+            _state.update { it.copy(toast = "TODO：播放 ${entry.name}") }
             return
         }
         val current = _state.value.currentPath

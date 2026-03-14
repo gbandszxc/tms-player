@@ -9,6 +9,7 @@
 5. 构建参数固定为 JDK 17，ABI 限定 `arm64-v8a`。
 6. 已验证 `assembleDebug` 可成功打包。
 7. 已接入 release 签名配置并产出已签名 `app-release.apk`。
+8. 已增加 product flavors：`dev`（开发联调）与 `tv`（电视约束）。
 
 ## 1. 当前项目定位
 
@@ -65,14 +66,17 @@ tv-media-player/
 在项目根目录执行（Windows PowerShell）：
 
 ```powershell
-# Debug 包
-.\gradlew.bat assembleDebug
+# Dev Debug（推荐：手机/普通模拟器可见）
+.\gradlew.bat assembleDevDebug
 
-# Release 包（标准）
-.\gradlew.bat assembleRelease
+# TV Debug（电视调试）
+.\gradlew.bat assembleTvDebug
 
-# Release 包（规避 lintVital 依赖下载问题）
-.\gradlew.bat clean assembleRelease -x lintVitalAnalyzeRelease
+# TV Release（标准）
+.\gradlew.bat assembleTvRelease
+
+# TV Release（规避 lintVital 依赖下载问题）
+.\gradlew.bat clean assembleTvRelease -x lintVitalAnalyzeRelease
 
 # 清理
 .\gradlew.bat clean
@@ -87,29 +91,38 @@ cmd /c "set JAVA_HOME=C:\D\Develop\Java\jdk-17.0.16+8&& set PATH=%JAVA_HOME%\bin
 ## 4. 产物位置
 
 ```text
-Debug:   app\build\outputs\apk\debug\app-debug.apk
-Release: app\build\outputs\apk\release\app-release.apk
+Dev Debug: app\build\outputs\apk\dev\debug\app-dev-debug.apk
+TV Debug:  app\build\outputs\apk\tv\debug\app-tv-debug.apk
+TV Release: app\build\outputs\apk\tv\release\app-tv-release.apk
 ```
 
 ## 5. Release 命令差异说明
 
-1. `.\gradlew.bat assembleRelease`
-直接执行 release 构建，沿用当前缓存，不主动清理；会包含 `lintVitalAnalyzeRelease`。
+1. `.\gradlew.bat assembleTvRelease`
+直接执行 TV release 构建，沿用当前缓存，不主动清理；会包含 `lintVitalAnalyzeRelease`。
 
-2. `.\gradlew.bat clean assembleRelease -x lintVitalAnalyzeRelease`
+2. `.\gradlew.bat clean assembleTvRelease -x lintVitalAnalyzeRelease`
 先清理再全量构建，且跳过 `lintVitalAnalyzeRelease` 任务。适合你当前机器偶发的 TLS 握手失败场景（下载 lint 依赖中断）时使用。
 
 3. 什么时候用哪条
-- 网络正常时优先用标准命令：`assembleRelease`
+- 网络正常时优先用标准命令：`assembleTvRelease`
 - 出现 `lintVitalAnalyzeRelease` 依赖下载失败时，用 `-x lintVitalAnalyzeRelease` 兜底打包
 
-## 6. 签名配置与安全
+## 6. Flavor 说明
+
+1. `dev` flavor
+- 用于开发联调，`android.software.leanback` 在主清单中为 `required=false`，便于手机和普通模拟器显示图标。
+
+2. `tv` flavor
+- `app/src/tv/AndroidManifest.xml` 覆盖为 `android.software.leanback required=true`，保持 TV 设备约束。
+- 发布请使用 `tvRelease` 变体。
+## 7. 签名配置与安全
 
 1. 项目已在 `app/build.gradle` 配置 `signingConfigs.release`。
 2. 本地使用根目录 `key.properties` 读取签名参数。
 3. `key.properties` 已加入 `.gitignore`，不会被提交。
 
-## 7. 当前实现边界
+## 8. 当前实现边界
 
 1. SMB 目前是 Fake 仓库（用于演示与跑通交互流程），未接真实 NAS。
 2. 播放器、后台播放、通知控制、封面与歌词联动尚未接入真实 Media3 流程。

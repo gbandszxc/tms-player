@@ -34,6 +34,18 @@ android {
         }
     }
 
+    flavorDimensions += "device"
+    productFlavors {
+        dev {
+            dimension "device"
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
+        tv {
+            dimension "device"
+        }
+    }
+
     buildTypes {
         release {
             signingConfig signingConfigs.release

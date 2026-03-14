@@ -1,209 +1,234 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root_scroll"
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#172554"
-    android:fillViewport="true"
-    android:scrollbars="none">
+    android:background="#172554">
 
-    <LinearLayout
-        android:id="@+id/root"
+    <ScrollView
+        android:id="@+id/root_scroll"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
-
-    <LinearLayout
-        android:id="@+id/panel_connection"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/bg_panel"
-        android:padding="16dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="【连接管理】"
-            android:textColor="#60A5FA"
-            android:textSize="20sp"
-            android:fontFamily="@font/misans_bold" />
-
-        <TextView
-            android:id="@+id/tv_connection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textColor="#EAF2FF"
-            android:textSize="18sp"
-            android:fontFamily="@font/misans_medium" />
-
-        <TextView
-            android:id="@+id/tv_saved_count"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textColor="#CBD5E1"
-            android:textSize="16sp"
-            android:fontFamily="@font/misans_regular" />
-
-        <Button
-            android:id="@+id/btn_manage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:minWidth="180dp"
-            android:gravity="center"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:text="管理连接"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:background="@drawable/bg_button_primary"
-            android:fontFamily="@font/misans_medium" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/panel_files"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:orientation="vertical"
-        android:background="@drawable/bg_panel"
-        android:padding="16dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="【文件浏览】"
-            android:textColor="#60A5FA"
-            android:textSize="20sp"
-            android:fontFamily="@font/misans_bold" />
-
-        <TextView
-            android:id="@+id/tv_path"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="#25324A"
-            android:padding="10dp"
-            android:textColor="#EAF2FF"
-            android:textSize="18sp"
-            android:fontFamily="@font/misans_medium" />
+        android:layout_height="match_parent"
+        android:layout_marginTop="56dp"
+        android:fillViewport="true"
+        android:scrollbars="none">
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:id="@+id/root"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="horizontal">
+            android:orientation="vertical"
+            android:padding="20dp">
 
-            <Button
-                android:id="@+id/btn_refresh"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/panel_connection"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minWidth="130dp"
-                android:gravity="center"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:text="刷新当前目录"
-                android:textAllCaps="false"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:background="@drawable/bg_button_dark"
-                android:fontFamily="@font/misans_medium" />
+                android:orientation="vertical"
+                android:background="@drawable/bg_panel"
+                android:padding="16dp">
 
-            <Button
-                android:id="@+id/btn_retry"
-                android:layout_width="wrap_content"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="【连接管理】"
+                    android:textColor="#60A5FA"
+                    android:textSize="20sp"
+                    android:fontFamily="@font/misans_bold" />
+
+                <TextView
+                    android:id="@+id/tv_connection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="#EAF2FF"
+                    android:textSize="18sp"
+                    android:fontFamily="@font/misans_medium" />
+
+                <TextView
+                    android:id="@+id/tv_saved_count"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="#CBD5E1"
+                    android:textSize="16sp"
+                    android:fontFamily="@font/misans_regular" />
+
+                <Button
+                    android:id="@+id/btn_manage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:minWidth="180dp"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="管理连接"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:background="@drawable/bg_button_primary"
+                    android:fontFamily="@font/misans_medium" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/panel_files"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minWidth="110dp"
-                android:layout_marginStart="10dp"
-                android:gravity="center"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:text="重试连接"
-                android:textAllCaps="false"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:background="@drawable/bg_button_dark"
-                android:fontFamily="@font/misans_medium" />
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                android:background="@drawable/bg_panel"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="【文件浏览】"
+                    android:textColor="#60A5FA"
+                    android:textSize="20sp"
+                    android:fontFamily="@font/misans_bold" />
+
+                <TextView
+                    android:id="@+id/tv_path"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="#25324A"
+                    android:padding="10dp"
+                    android:textColor="#EAF2FF"
+                    android:textSize="18sp"
+                    android:fontFamily="@font/misans_medium" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btn_refresh"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="130dp"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:text="刷新当前目录"
+                        android:textAllCaps="false"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:background="@drawable/bg_button_dark"
+                        android:fontFamily="@font/misans_medium" />
+
+                    <Button
+                        android:id="@+id/btn_retry"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="110dp"
+                        android:layout_marginStart="10dp"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:text="重试连接"
+                        android:textAllCaps="false"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:background="@drawable/bg_button_dark"
+                        android:fontFamily="@font/misans_medium" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:textColor="#FCA5A5"
+                    android:textSize="15sp"
+                    android:fontFamily="@font/misans_regular"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/container_files"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/panel_playback"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                android:background="@drawable/bg_panel"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="【播放控制】"
+                    android:textColor="#60A5FA"
+                    android:textSize="20sp"
+                    android:fontFamily="@font/misans_bold" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btn_play_all"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="130dp"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:text="顺序播放"
+                        android:textAllCaps="false"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:background="@drawable/bg_button_green"
+                        android:fontFamily="@font/misans_medium" />
+
+                    <Button
+                        android:id="@+id/btn_play_shuffle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="130dp"
+                        android:layout_marginStart="10dp"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:text="随机播放"
+                        android:textAllCaps="false"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:background="@drawable/bg_button_green"
+                        android:fontFamily="@font/misans_medium" />
+                </LinearLayout>
+            </LinearLayout>
+
         </LinearLayout>
+    </ScrollView>
 
-        <TextView
-            android:id="@+id/tv_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:textColor="#FCA5A5"
-            android:textSize="15sp"
-            android:fontFamily="@font/misans_regular"
-            android:visibility="gone" />
-
-        <LinearLayout
-            android:id="@+id/container_files"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="vertical" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/panel_playback"
-        android:layout_width="match_parent"
+    <Button
+        android:id="@+id/btn_back_top"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:orientation="vertical"
-        android:background="@drawable/bg_panel"
-        android:padding="16dp">
+        android:layout_gravity="top|start"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:minWidth="130dp"
+        android:gravity="center"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="⬅ 返回上一级"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:background="@drawable/bg_button_dark"
+        android:fontFamily="@font/misans_medium" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="【播放控制】"
-            android:textColor="#60A5FA"
-            android:textSize="20sp"
-            android:fontFamily="@font/misans_bold" />
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/btn_play_all"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="130dp"
-                android:gravity="center"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:text="顺序播放"
-                android:textAllCaps="false"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:background="@drawable/bg_button_green"
-                android:fontFamily="@font/misans_medium" />
-
-            <Button
-                android:id="@+id/btn_play_shuffle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="130dp"
-                android:layout_marginStart="10dp"
-                android:gravity="center"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:text="随机播放"
-                android:textAllCaps="false"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:background="@drawable/bg_button_green"
-                android:fontFamily="@font/misans_medium" />
-        </LinearLayout>
-    </LinearLayout>
-
-    </LinearLayout>
-</ScrollView>
+</FrameLayout>

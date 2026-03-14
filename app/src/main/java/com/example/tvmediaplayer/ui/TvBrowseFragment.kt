@@ -1,4 +1,4 @@
-package com.example.tvmediaplayer.ui
+﻿package com.example.tvmediaplayer.ui
 
 import android.app.AlertDialog
 import android.content.ComponentName
@@ -42,6 +42,7 @@ class TvBrowseFragment : Fragment() {
     private var mediaController: MediaController? = null
 
     private lateinit var panelConnection: View
+    private lateinit var btnBackTop: Button
     private lateinit var tvConnection: TextView
     private lateinit var tvSavedCount: TextView
     private lateinit var btnManage: Button
@@ -76,6 +77,7 @@ class TvBrowseFragment : Fragment() {
 
     private fun bindViews(root: View) {
         panelConnection = root.findViewById(R.id.panel_connection)
+        btnBackTop = root.findViewById(R.id.btn_back_top)
         tvConnection = root.findViewById(R.id.tv_connection)
         tvSavedCount = root.findViewById(R.id.tv_saved_count)
         btnManage = root.findViewById(R.id.btn_manage)
@@ -89,6 +91,7 @@ class TvBrowseFragment : Fragment() {
     }
 
     private fun bindActions(root: View) {
+        btnBackTop.setOnClickListener { navigateUpDirectory() }
         btnManage.setOnClickListener { showConnectionManagerDialog() }
         btnRefresh.setOnClickListener { viewModel.loadCurrentPath() }
         btnRetry.setOnClickListener { viewModel.loadCurrentPath() }
@@ -100,14 +103,7 @@ class TvBrowseFragment : Fragment() {
         root.setOnKeyListener { _, keyCode, event ->
             if (event.action != KeyEvent.ACTION_UP) return@setOnKeyListener false
             when (keyCode) {
-                KeyEvent.KEYCODE_BACK -> {
-                    if (viewModel.state.value.currentPath.isNotBlank()) {
-                        viewModel.enterDirectory(SmbEntry("..", viewModel.state.value.currentPath, true))
-                        true
-                    } else {
-                        false
-                    }
-                }
+                KeyEvent.KEYCODE_BACK -> navigateUpDirectory()
                 KeyEvent.KEYCODE_MENU -> {
                     showConnectionManagerDialog()
                     true
@@ -133,6 +129,9 @@ class TvBrowseFragment : Fragment() {
         val showConnectionSection = state.currentPath.isBlank()
         panelConnection.visibility = if (showConnectionSection) View.VISIBLE else View.GONE
 
+        btnBackTop.isEnabled = state.currentPath.isNotBlank()
+        btnBackTop.alpha = if (btnBackTop.isEnabled) 1f else 0.55f
+
         tvConnection.text = "当前连接：${configText(state.config)}"
         tvSavedCount.text = "已保存连接：${state.savedConnections.size} 个"
 
@@ -140,14 +139,16 @@ class TvBrowseFragment : Fragment() {
         tvPath.text = "当前路径：$pathLabel"
 
         btnRetry.visibility = if (state.error != null) View.VISIBLE else View.GONE
-        if (state.error != null) {
-            tvStatus.visibility = View.VISIBLE
-            tvStatus.text = state.error
-        } else if (state.loading) {
-            tvStatus.visibility = View.VISIBLE
-            tvStatus.text = "加载中..."
-        } else {
-            tvStatus.visibility = View.GONE
+        when {
+            state.error != null -> {
+                tvStatus.visibility = View.VISIBLE
+                tvStatus.text = state.error
+            }
+            state.loading -> {
+                tvStatus.visibility = View.VISIBLE
+                tvStatus.text = "加载中..."
+            }
+            else -> tvStatus.visibility = View.GONE
         }
 
         val displayEntries = buildList {
@@ -165,14 +166,11 @@ class TvBrowseFragment : Fragment() {
             val itemView = layoutInflater.inflate(R.layout.item_file_entry, filesContainer, false)
             val tvTag: TextView = itemView.findViewById(R.id.tv_tag)
             val tvName: TextView = itemView.findViewById(R.id.tv_name)
-            if (entry.isDirectory) {
-                tvTag.text = "目录"
-                tvTag.setBackgroundResource(R.drawable.bg_tag_dir)
-            } else {
-                tvTag.text = "音频"
-                tvTag.setBackgroundResource(R.drawable.bg_tag_audio)
-            }
+
+            tvTag.text = if (entry.isDirectory) "📁" else "🎵"
+            tvTag.background = null
             tvName.text = entry.name
+
             itemView.setOnClickListener { onFileClicked(entry) }
             filesContainer.addView(itemView)
         }
@@ -186,6 +184,12 @@ class TvBrowseFragment : Fragment() {
         val queue = PlaybackQueueBuilder.fromDirectory(viewModel.state.value.entries)
         val startIndex = PlaybackQueueBuilder.startIndex(queue, entry)
         playQueue(queue, startIndex, shuffle = false)
+    }
+
+    private fun navigateUpDirectory(): Boolean {
+        if (viewModel.state.value.currentPath.isBlank()) return false
+        viewModel.enterDirectory(SmbEntry("..", viewModel.state.value.currentPath, true))
+        return true
     }
 
     private fun playDirectory(shuffle: Boolean) {

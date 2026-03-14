@@ -6,9 +6,10 @@ data class SmbConfig(
     val path: String,
     val username: String,
     val password: String,
-    val guest: Boolean
+    val guest: Boolean,
+    val smb1Enabled: Boolean = false
 ) {
-    fun normalizedPath(): String = path.trim().trim('/').replace("\\", "/")
+    fun normalizedPath(): String = path.trim().replace("\\", "/").trim('/')
 
     fun rootUrl(): String {
         val base = "smb://${host.trim()}/${share.trim()}"
@@ -23,7 +24,8 @@ data class SmbConfig(
             path = "",
             username = "",
             password = "",
-            guest = true
+            guest = true,
+            smb1Enabled = false
         )
     }
 }

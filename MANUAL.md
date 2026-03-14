@@ -4,7 +4,7 @@
 
 1. 初始化 Android TV 项目骨架并接入 Gradle Wrapper（8.7）。
 2. 完成 Leanback 首页浏览框架（`BrowseSupportFragment`）。
-3. 落地 SMB 浏览领域模型与仓库接口（当前为 Fake 仓库实现）。
+3. 落地 SMB 浏览领域模型与仓库接口（已在 Phase 1 切换为 `jcifs-ng` 真实仓库）。
 4. 增加歌词 LRC 解析器基础实现。
 5. 构建参数固定为 JDK 17，ABI 限定 `arm64-v8a`。
 6. 已验证 `assembleDebug` 可成功打包。
@@ -12,6 +12,10 @@
 8. 已增加 product flavors：`dev`（开发联调）与 `tv`（电视约束）。
 9. 已完成首轮中文化：主界面与 SMB 配置弹窗文案改为中文（保留 `SMB` 等专有名词）。
 10. 已接入内嵌 MiSans 字体（Regular/Medium/Bold）并在主题与列表项中启用。
+11. 已接入 SMB 配置持久化（DataStore Preferences），应用重启后自动恢复配置。
+12. 已增加 SMB 错误分级映射与中文提示（认证失败、服务器不可达、共享名不存在、路径无效、超时）。
+13. 已新增 SMB1 兼容开关（默认关闭，默认走 SMB2/3，可手动开启 SMB1）。
+14. 已补充首批单元测试：`SmbConfigTest`、`SmbFailureMapperTest`。
 
 ## 1. 当前项目定位
 
@@ -45,7 +49,7 @@ tv-media-player/
 │     ├─ AndroidManifest.xml
 │     ├─ java/com/example/tvmediaplayer/
 │     │  ├─ MainActivity.kt
-│     │  ├─ data/repo/FakeSmbRepository.kt
+│     │  ├─ data/repo/{FakeSmbRepository.kt,JcifsSmbRepository.kt,SmbConfigStore.kt,SmbFailureMapper.kt}
 │     │  ├─ domain/model/{SmbConfig.kt,SmbEntry.kt}
 │     │  ├─ domain/repo/SmbRepository.kt
 │     │  ├─ lyrics/LrcParser.kt
@@ -127,6 +131,6 @@ TV Release: app\build\outputs\apk\tv\release\app-tv-release.apk
 
 ## 8. 当前实现边界
 
-1. SMB 目前是 Fake 仓库（用于演示与跑通交互流程），未接真实 NAS。
-2. 播放器、后台播放、通知控制、封面与歌词联动尚未接入真实 Media3 流程。
+1. 播放器、后台播放、通知控制、封面与歌词联动尚未接入真实 Media3 流程。
+2. 当前 SMB 浏览按目录逐级访问，尚未实现全库递归扫描聚合能力。
 3. 已可产出已签名 release，但仍建议补充签名校验与安装回归测试流程。

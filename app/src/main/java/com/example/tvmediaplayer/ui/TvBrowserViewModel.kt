@@ -1,8 +1,12 @@
 package com.example.tvmediaplayer.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.tvmediaplayer.data.repo.FakeSmbRepository
+import com.example.tvmediaplayer.data.repo.JcifsSmbRepository
+import com.example.tvmediaplayer.data.repo.SmbConfigStore
+import com.example.tvmediaplayer.data.repo.SmbFailureMapper
 import com.example.tvmediaplayer.domain.model.SmbConfig
 import com.example.tvmediaplayer.domain.model.SmbEntry
 import com.example.tvmediaplayer.domain.repo.SmbRepository
@@ -22,14 +26,28 @@ data class TvBrowserState(
 )
 
 class TvBrowserViewModel(
-    private val repository: SmbRepository = FakeSmbRepository()
+    private val repository: SmbRepository,
+    private val configStore: SmbConfigStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TvBrowserState())
     val state: StateFlow<TvBrowserState> = _state.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            val config = configStore.load()
+            _state.update { it.copy(config = config, currentPath = config.normalizedPath()) }
+            if (config.host.isNotBlank() && config.share.isNotBlank()) {
+                loadCurrentPath()
+            }
+        }
+    }
+
     fun saveConfig(config: SmbConfig) {
         _state.update { it.copy(config = config, currentPath = config.normalizedPath(), error = null) }
+        viewModelScope.launch {
+            configStore.save(config)
+        }
         loadCurrentPath()
     }
 
@@ -46,7 +64,8 @@ class TvBrowserViewModel(
             }.onSuccess { list ->
                 _state.update { it.copy(entries = list, loading = false) }
             }.onFailure { ex ->
-                _state.update { it.copy(loading = false, error = ex.message ?: "SMB 浏览失败") }
+                val message = SmbFailureMapper.toUserMessage(SmbFailureMapper.map(ex))
+                _state.update { it.copy(loading = false, error = message) }
             }
         }
     }
@@ -67,5 +86,18 @@ class TvBrowserViewModel(
 
     fun consumeToast() {
         _state.update { it.copy(toast = null) }
+    }
+
+    companion object {
+        fun factory(context: Context): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val appContext = context.applicationContext
+                return TvBrowserViewModel(
+                    repository = JcifsSmbRepository(),
+                    configStore = SmbConfigStore(appContext)
+                ) as T
+            }
+        }
     }
 }

@@ -21,7 +21,9 @@ import kotlinx.coroutines.launch
 
 class TvBrowseFragment : BrowseSupportFragment() {
 
-    private val viewModel by viewModels<TvBrowserViewModel>()
+    private val viewModel by viewModels<TvBrowserViewModel> {
+        TvBrowserViewModel.factory(requireContext().applicationContext)
+    }
     private val rowsAdapter by lazy { ArrayObjectAdapter(ListRowPresenter()) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -128,6 +130,11 @@ class TvBrowseFragment : BrowseSupportFragment() {
             typeface = AppFonts.regular(context)
             isChecked = current.guest
         }
+        val smb1Check = CheckBox(context).apply {
+            text = "启用 SMB1 兼容（默认关闭）"
+            typeface = AppFonts.regular(context)
+            isChecked = current.smb1Enabled
+        }
 
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -139,6 +146,7 @@ class TvBrowseFragment : BrowseSupportFragment() {
             addView(userInput)
             addView(passInput)
             addView(guestCheck)
+            addView(smb1Check)
         }
 
         android.app.AlertDialog.Builder(context)
@@ -152,7 +160,8 @@ class TvBrowseFragment : BrowseSupportFragment() {
                     path = pathInput.text.toString().trim(),
                     username = userInput.text.toString().trim(),
                     password = passInput.text.toString(),
-                    guest = guestCheck.isChecked
+                    guest = guestCheck.isChecked,
+                    smb1Enabled = smb1Check.isChecked
                 )
                 viewModel.saveConfig(config)
             }

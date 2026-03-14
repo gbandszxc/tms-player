@@ -20,7 +20,7 @@
         android:paddingRight="8dp"
         android:paddingBottom="3dp"
         android:textColor="#FFFFFF"
-        android:textSize="18sp"
+        android:textSize="14sp"
         android:fontFamily="@font/misans_bold" />
 
     <TextView
@@ -32,8 +32,7 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:textColor="#F8FAFC"
-        android:textSize="24sp"
+        android:textSize="18sp"
         android:fontFamily="@font/misans_medium" />
 
 </LinearLayout>
-

@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#172554"
-    android:padding="20dp">
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:id="@+id/root"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
 
     <LinearLayout
         android:id="@+id/panel_connection"
@@ -20,7 +27,7 @@
             android:layout_height="wrap_content"
             android:text="【连接管理】"
             android:textColor="#60A5FA"
-            android:textSize="28sp"
+            android:textSize="20sp"
             android:fontFamily="@font/misans_bold" />
 
         <TextView
@@ -29,7 +36,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:textColor="#EAF2FF"
-            android:textSize="24sp"
+            android:textSize="18sp"
             android:fontFamily="@font/misans_medium" />
 
         <TextView
@@ -38,7 +45,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textColor="#CBD5E1"
-            android:textSize="22sp"
+            android:textSize="16sp"
             android:fontFamily="@font/misans_regular" />
 
         <Button
@@ -46,11 +53,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:minWidth="220dp"
-            android:text="管理连接（编辑/切换/新建）"
+            android:minWidth="180dp"
+            android:gravity="center"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="管理连接"
             android:textAllCaps="false"
             android:textColor="#FFFFFF"
-            android:textSize="20sp"
+            android:textSize="16sp"
             android:background="@drawable/bg_button_primary"
             android:fontFamily="@font/misans_medium" />
     </LinearLayout>
@@ -58,8 +68,7 @@
     <LinearLayout
         android:id="@+id/panel_files"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:orientation="vertical"
         android:background="@drawable/bg_panel"
@@ -70,7 +79,7 @@
             android:layout_height="wrap_content"
             android:text="【文件浏览】"
             android:textColor="#60A5FA"
-            android:textSize="28sp"
+            android:textSize="20sp"
             android:fontFamily="@font/misans_bold" />
 
         <TextView
@@ -81,7 +90,7 @@
             android:background="#25324A"
             android:padding="10dp"
             android:textColor="#EAF2FF"
-            android:textSize="22sp"
+            android:textSize="18sp"
             android:fontFamily="@font/misans_medium" />
 
         <LinearLayout
@@ -92,24 +101,32 @@
 
             <Button
                 android:id="@+id/btn_refresh"
-                android:layout_width="140dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:minWidth="130dp"
+                android:gravity="center"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:text="刷新当前目录"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
-                android:textSize="20sp"
+                android:textSize="16sp"
                 android:background="@drawable/bg_button_dark"
                 android:fontFamily="@font/misans_medium" />
 
             <Button
                 android:id="@+id/btn_retry"
-                android:layout_width="120dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:minWidth="110dp"
                 android:layout_marginStart="10dp"
+                android:gravity="center"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:text="重试连接"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
-                android:textSize="20sp"
+                android:textSize="16sp"
                 android:background="@drawable/bg_button_dark"
                 android:fontFamily="@font/misans_medium" />
         </LinearLayout>
@@ -120,18 +137,16 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:textColor="#FCA5A5"
-            android:textSize="20sp"
+            android:textSize="15sp"
             android:fontFamily="@font/misans_regular"
             android:visibility="gone" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_files"
+        <LinearLayout
+            android:id="@+id/container_files"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:paddingBottom="8dp" />
+            android:orientation="vertical" />
     </LinearLayout>
 
     <LinearLayout
@@ -148,7 +163,7 @@
             android:layout_height="wrap_content"
             android:text="【播放控制】"
             android:textColor="#60A5FA"
-            android:textSize="28sp"
+            android:textSize="20sp"
             android:fontFamily="@font/misans_bold" />
 
         <LinearLayout
@@ -159,28 +174,36 @@
 
             <Button
                 android:id="@+id/btn_play_all"
-                android:layout_width="170dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="播放当前目录（顺序）"
+                android:minWidth="130dp"
+                android:gravity="center"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="顺序播放"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
-                android:textSize="20sp"
+                android:textSize="16sp"
                 android:background="@drawable/bg_button_green"
                 android:fontFamily="@font/misans_medium" />
 
             <Button
                 android:id="@+id/btn_play_shuffle"
-                android:layout_width="170dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:minWidth="130dp"
                 android:layout_marginStart="10dp"
-                android:text="播放当前目录（随机）"
+                android:gravity="center"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="随机播放"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
-                android:textSize="20sp"
+                android:textSize="16sp"
                 android:background="@drawable/bg_button_green"
                 android:fontFamily="@font/misans_medium" />
         </LinearLayout>
     </LinearLayout>
 
-</LinearLayout>
-
+    </LinearLayout>
+</ScrollView>

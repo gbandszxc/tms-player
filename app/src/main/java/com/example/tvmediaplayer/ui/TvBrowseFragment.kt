@@ -19,8 +19,6 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.example.tvmediaplayer.R
 import com.example.tvmediaplayer.domain.model.SmbConfig
 import com.example.tvmediaplayer.domain.model.SmbEntry
@@ -53,9 +51,7 @@ class TvBrowseFragment : Fragment() {
     private lateinit var tvStatus: TextView
     private lateinit var btnPlayAll: Button
     private lateinit var btnPlayShuffle: Button
-    private lateinit var rvFiles: RecyclerView
-
-    private lateinit var fileAdapter: FileEntryAdapter
+    private lateinit var filesContainer: LinearLayout
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_tv_browser, container, false)
@@ -89,12 +85,7 @@ class TvBrowseFragment : Fragment() {
         tvStatus = root.findViewById(R.id.tv_status)
         btnPlayAll = root.findViewById(R.id.btn_play_all)
         btnPlayShuffle = root.findViewById(R.id.btn_play_shuffle)
-        rvFiles = root.findViewById(R.id.rv_files)
-
-        fileAdapter = FileEntryAdapter { entry -> onFileClicked(entry) }
-        rvFiles.layoutManager = LinearLayoutManager(requireContext())
-        rvFiles.adapter = fileAdapter
-        rvFiles.itemAnimator = null
+        filesContainer = root.findViewById(R.id.container_files)
     }
 
     private fun bindActions(root: View) {
@@ -165,7 +156,26 @@ class TvBrowseFragment : Fragment() {
             }
             addAll(state.entries)
         }
-        fileAdapter.submit(displayEntries)
+        renderFileItems(displayEntries)
+    }
+
+    private fun renderFileItems(entries: List<SmbEntry>) {
+        filesContainer.removeAllViews()
+        entries.forEach { entry ->
+            val itemView = layoutInflater.inflate(R.layout.item_file_entry, filesContainer, false)
+            val tvTag: TextView = itemView.findViewById(R.id.tv_tag)
+            val tvName: TextView = itemView.findViewById(R.id.tv_name)
+            if (entry.isDirectory) {
+                tvTag.text = "目录"
+                tvTag.setBackgroundResource(R.drawable.bg_tag_dir)
+            } else {
+                tvTag.text = "音频"
+                tvTag.setBackgroundResource(R.drawable.bg_tag_audio)
+            }
+            tvName.text = entry.name
+            itemView.setOnClickListener { onFileClicked(entry) }
+            filesContainer.addView(itemView)
+        }
     }
 
     private fun onFileClicked(entry: SmbEntry) {
@@ -362,56 +372,4 @@ class TvBrowseFragment : Fragment() {
             else "smb://${config.host}/${config.share}/$path"
         }
     }
-
-    private class FileEntryAdapter(
-        private val onClick: (SmbEntry) -> Unit
-    ) : RecyclerView.Adapter<FileEntryAdapter.Holder>() {
-        private val items = mutableListOf<SmbEntry>()
-
-        fun submit(list: List<SmbEntry>) {
-            items.clear()
-            items.addAll(list)
-            notifyDataSetChanged()
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_file_entry, parent, false)
-            return Holder(view, onClick)
-        }
-
-        override fun onBindViewHolder(holder: Holder, position: Int) {
-            holder.bind(items[position])
-        }
-
-        override fun getItemCount(): Int = items.size
-
-        class Holder(
-            itemView: View,
-            private val onClick: (SmbEntry) -> Unit
-        ) : RecyclerView.ViewHolder(itemView) {
-            private val tvTag: TextView = itemView.findViewById(R.id.tv_tag)
-            private val tvName: TextView = itemView.findViewById(R.id.tv_name)
-            private var current: SmbEntry? = null
-
-            init {
-                itemView.setOnClickListener {
-                    current?.let(onClick)
-                }
-            }
-
-            fun bind(entry: SmbEntry) {
-                current = entry
-                if (entry.isDirectory) {
-                    tvTag.text = "目录"
-                    tvTag.setBackgroundResource(R.drawable.bg_tag_dir)
-                } else {
-                    tvTag.text = "音频"
-                    tvTag.setBackgroundResource(R.drawable.bg_tag_audio)
-                }
-                tvName.text = entry.name
-            }
-        }
-    }
 }
-

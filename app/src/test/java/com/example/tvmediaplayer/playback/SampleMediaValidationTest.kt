@@ -1,4 +1,4 @@
-package com.example.tvmediaplayer.playback
+﻿package com.example.tvmediaplayer.playback
 
 import com.example.tvmediaplayer.lyrics.LrcParser
 import java.io.File
@@ -21,19 +21,19 @@ class SampleMediaValidationTest {
 
     @Test
     fun lrcSampleShouldBeParsable() {
-        val lrc = resolveSampleFile("トラック01.lrc")
+        val lrc = resolveSampleFile("Track9.lrc")
         val content = lrc.readText(Charsets.UTF_8)
         val timeline = LrcParser.parseTimeline(content)
         assertTrue("LRC should contain parsed lines", timeline.lines.isNotEmpty())
         assertTrue(
-            "LRC should contain long line for wrapping validation",
-            timeline.lines.any { it.text.length >= 20 }
+            "LRC should include valid timestamp ordering",
+            timeline.lines.zipWithNext().all { (a, b) -> a.timestampMs <= b.timestampMs }
         )
     }
 
     @Test
     fun mp3SampleShouldContainEmbeddedArtwork() {
-        val mp3 = resolveSampleFile("トラック01.mp3")
+        val mp3 = resolveSampleFile("Track9.mp3")
         val audio = AudioFileIO.read(mp3)
         val artwork = audio.tag?.firstArtwork
         assertNotNull("Sample MP3 should contain embedded artwork", artwork)

@@ -18,6 +18,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.example.tvmediaplayer.R
+import com.example.tvmediaplayer.data.repo.SmbConfigStore
 import com.example.tvmediaplayer.domain.model.SmbConfig
 import com.example.tvmediaplayer.domain.model.SmbEntry
 import com.example.tvmediaplayer.lyrics.LrcParser
@@ -45,10 +46,12 @@ class PlaybackActivity : FragmentActivity() {
     private var mediaController: MediaController? = null
     private var progressJob: Job? = null
     private val lyricsRepository = SmbLyricsRepository()
+    private lateinit var configStore: SmbConfigStore
 
     private var currentTimeline: LrcTimeline? = null
     private var currentLyricKey: String? = null
     private var currentArtworkKey: String? = null
+    private var fallbackConfig: SmbConfig = SmbConfig.Empty
 
     private lateinit var ivArtwork: ImageView
     private lateinit var tvTitle: TextView
@@ -81,6 +84,7 @@ class PlaybackActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        configStore = SmbConfigStore(applicationContext)
         setContentView(R.layout.activity_playback)
         bindViews()
         bindActions()
@@ -226,6 +230,15 @@ class PlaybackActivity : FragmentActivity() {
         tvLyricNext.text = ""
 
         val config = PlaybackConfigStore.current()
+        if (config.host.isBlank()) {
+            lifecycleScope.launch {
+                refreshFallbackConfigIfNeeded()
+                if (currentLyricKey == key) {
+                    // Trigger a fresh attempt once fallback config is restored.
+                    currentLyricKey = null
+                }
+            }
+        }
         val uri = mediaItem.localConfiguration?.uri?.toString().orEmpty()
         val fullPath = mediaItem.mediaId
         val fileName = fullPath.substringAfterLast('/').ifBlank {
@@ -240,7 +253,7 @@ class PlaybackActivity : FragmentActivity() {
 
         lifecycleScope.launch {
             val timeline = withContext(Dispatchers.IO) {
-                runCatching { lyricsRepository.load(config, entry) }.getOrNull()
+                loadLyricsWithRetry(entry)
             }
             if (currentLyricKey != key) return@launch
             currentTimeline = timeline
@@ -277,12 +290,11 @@ class PlaybackActivity : FragmentActivity() {
         val artworkKey = mediaItem.mediaId + "|" + mediaItem.localConfiguration?.uri
         if (artworkKey == currentArtworkKey) return
         currentArtworkKey = artworkKey
-        val config = PlaybackConfigStore.current()
         ivArtwork.setImageResource(R.drawable.ic_launcher_foreground)
 
         lifecycleScope.launch {
             val bitmap = withContext(Dispatchers.IO) {
-                loadArtworkBitmap(config, mediaItem)
+                loadArtworkBitmap(resolvePlaybackConfig(), mediaItem)
             }
             if (currentArtworkKey != artworkKey) return@launch
             if (bitmap != null) {
@@ -301,8 +313,8 @@ class PlaybackActivity : FragmentActivity() {
 
         val mediaUri = mediaItem.localConfiguration?.uri?.toString().orEmpty()
         if (mediaUri.startsWith("smb://", ignoreCase = true)) {
-            loadSiblingArtwork(mediaUri, config)?.let { return@runCatching it }
             loadEmbeddedArtwork(mediaUri, config)?.let { return@runCatching it }
+            loadSiblingArtwork(mediaUri, config)?.let { return@runCatching it }
         }
         null
     }.getOrNull()
@@ -370,5 +382,31 @@ class PlaybackActivity : FragmentActivity() {
             repeatCount < 40 -> 60_000L
             else -> 90_000L
         }
+    }
+
+    private suspend fun loadLyricsWithRetry(entry: SmbEntry): LrcTimeline? {
+        repeat(3) { attempt ->
+            val timeline = runCatching {
+                lyricsRepository.load(resolvePlaybackConfig(), entry)
+            }.getOrNull()
+            if (timeline != null && timeline.lines.isNotEmpty()) return timeline
+            if (attempt < 2) delay(250L * (attempt + 1))
+        }
+        return null
+    }
+
+    private suspend fun resolvePlaybackConfig(): SmbConfig {
+        val active = PlaybackConfigStore.current()
+        if (active.host.isNotBlank()) return active
+        refreshFallbackConfigIfNeeded()
+        return fallbackConfig
+    }
+
+    private suspend fun refreshFallbackConfigIfNeeded() {
+        if (fallbackConfig.host.isNotBlank()) return
+        val loaded = runCatching { configStore.loadState().activeConfig }.getOrNull() ?: return
+        if (loaded.host.isBlank()) return
+        fallbackConfig = loaded
+        PlaybackConfigStore.update(loaded)
     }
 }

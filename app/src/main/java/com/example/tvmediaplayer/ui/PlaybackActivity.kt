@@ -330,7 +330,10 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun loadEmbeddedArtwork(mediaSmbUrl: String, config: SmbConfig) = runCatching {
         val smbFile = SmbFile(mediaSmbUrl, SmbContextFactory.build(config))
-        val temp = File.createTempFile("artwork-", ".tmp")
+        val suffix = mediaSmbUrl.substringAfterLast('.', "").lowercase().let {
+            if (it.isBlank() || it.length > 8) ".tmp" else ".$it"
+        }
+        val temp = File.createTempFile("artwork-", suffix)
         try {
             SmbFileInputStream(smbFile).use { input ->
                 temp.outputStream().use { output -> input.copyTo(output) }

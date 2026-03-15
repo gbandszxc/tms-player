@@ -69,3 +69,6 @@ fastlane/test_output/
 # Local temporary bootstrap artifacts
 .gradle-tmp/
 .gradle-tmp-*.zip
+
+
+sample/

@@ -36,16 +36,14 @@ class SmbLyricsRepository {
     }
 
     private fun loadExternalLrc(config: SmbConfig, entry: SmbEntry, context: CIFSContext): LrcTimeline? {
-        val parentPath = entry.fullPath.substringBeforeLast('/', "")
-        val fileNameWithoutExt = entry.name.substringBeforeLast('.', entry.name)
+        val parentPath = resolveParentPath(config, entry)
+        val fileNameWithoutExt = resolveFileName(entry).substringBeforeLast('.', resolveFileName(entry))
         val hostBase = "smb://${config.host.trim()}".trimEnd('/')
         val share = config.share.trim()
         val base = if (share.isBlank()) hostBase else "$hostBase/$share"
-        val lrcPath = if (parentPath.isBlank()) {
-            "$base/$fileNameWithoutExt.lrc"
-        } else {
-            "$hostBase/$parentPath/$fileNameWithoutExt.lrc"
-        }
+        val lrcPath = listOf(base, parentPath, "$fileNameWithoutExt.lrc")
+            .filter { it.isNotBlank() }
+            .joinToString("/")
         val lrcFile = SmbFile(lrcPath, context)
         if (!lrcFile.exists() || lrcFile.isDirectory) return null
 
@@ -53,6 +51,24 @@ class SmbLyricsRepository {
         val content = decodeText(bytes)
         val timeline = LrcParser.parseTimeline(content)
         return if (timeline.lines.isEmpty()) null else timeline
+    }
+
+    private fun resolveParentPath(config: SmbConfig, entry: SmbEntry): String {
+        if (entry.fullPath.isNotBlank()) {
+            return entry.fullPath.substringBeforeLast('/', "")
+        }
+        val stream = entry.streamUri.orEmpty()
+        if (!stream.startsWith("smb://", ignoreCase = true)) return ""
+        val afterHost = stream.removePrefix("smb://").substringAfter('/', "")
+        val noFile = afterHost.substringBeforeLast('/', "")
+        if (config.share.isBlank()) return noFile
+        return noFile.removePrefix("${config.share.trim()}/").removePrefix(config.share.trim())
+    }
+
+    private fun resolveFileName(entry: SmbEntry): String {
+        if (entry.name.isNotBlank()) return entry.name
+        val stream = entry.streamUri.orEmpty()
+        return stream.substringAfterLast('/', stream)
     }
 
     private fun loadEmbeddedLyrics(context: CIFSContext, entry: SmbEntry): String? {

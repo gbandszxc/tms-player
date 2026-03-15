@@ -10,11 +10,11 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace 'com.example.tvmediaplayer'
+    namespace 'com.github.gbandszxc.tvmediaplayer'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.tvmediaplayer"
+        applicationId "com.github.gbandszxc.tvmediaplayer"
         minSdk 21
         targetSdk 34
         versionCode 1

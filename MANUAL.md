@@ -65,12 +65,13 @@
 61. 播放页缓存键已统一为 `uri` 优先，回到当前播放时歌词与封面更易命中缓存。
 62. 已新增图标批处理脚本 `spec/icon/generate_android_icons.ps1`，可将 `spec/icon/icon_raw.png` 一键生成并覆盖 Android `mipmap-*` 启动图标资源。
 63. 已知问题：`sample/Track9` 在部分实测场景仍偶发“歌词加载中 -> 暂无歌词”，封面缓存已稳定但歌词链路待下一轮继续优化。
+64. 已统一应用包名与源码包路径：`com.example.tvmediaplayer` -> `com.github.gbandszxc.tvmediaplayer`。
 
 ## 1. 当前项目定位
 
 当前工程是“可编译、可侧载、可在 TV 上浏览骨架 UI”的第一阶段版本。
 
-- 包名：`com.example.tvmediaplayer`
+- 包名：`com.github.gbandszxc.tvmediaplayer`
 - `minSdk`：`21`
 - `targetSdk`：`34`
 - `compileSdk`：`34`
@@ -96,7 +97,7 @@ tv-media-player/
 │  ├─ build.gradle
 │  └─ src/main/
 │     ├─ AndroidManifest.xml
-│     ├─ java/com/example/tvmediaplayer/
+│     ├─ java/com/github/gbandszxc/tvmediaplayer/
 │     │  ├─ MainActivity.kt
 │     │  ├─ data/repo/{FakeSmbRepository.kt,JcifsSmbRepository.kt,SmbConfigStore.kt,SmbFailureMapper.kt}
 │     │  ├─ domain/model/{SmbConfig.kt,SmbEntry.kt,SavedSmbConnection.kt}

@@ -37,14 +37,23 @@ class SmbLyricsRepository {
     }
 
     private fun loadExternalLrc(config: SmbConfig, entry: SmbEntry, context: CIFSContext): LrcTimeline? {
-        val lrcPath = SmbPathResolver.buildExternalLrcPath(config, entry)
-        val lrcFile = SmbFile(lrcPath, context)
-        if (!lrcFile.exists() || lrcFile.isDirectory) return null
+        val candidates = linkedSetOf<String>()
+        val stream = entry.streamUri.orEmpty()
+        if (stream.startsWith("smb://", ignoreCase = true)) {
+            val lrcByUri = stream.substringBeforeLast('.', stream) + ".lrc"
+            candidates.add(lrcByUri)
+        }
+        candidates.add(SmbPathResolver.buildExternalLrcPath(config, entry))
 
-        val bytes = SmbFileInputStream(lrcFile).use { it.readBytes() }
-        val content = decodeText(bytes)
-        val timeline = LrcParser.parseTimeline(content)
-        return if (timeline.lines.isEmpty()) null else timeline
+        for (lrcPath in candidates) {
+            val lrcFile = SmbFile(lrcPath, context)
+            if (!lrcFile.exists() || lrcFile.isDirectory) continue
+            val bytes = SmbFileInputStream(lrcFile).use { it.readBytes() }
+            val content = decodeText(bytes)
+            val timeline = LrcParser.parseTimeline(content)
+            if (timeline.lines.isNotEmpty()) return timeline
+        }
+        return null
     }
 
     private fun loadEmbeddedLyrics(context: CIFSContext, entry: SmbEntry): String? {
@@ -65,6 +74,16 @@ class SmbLyricsRepository {
     }
 
     private fun decodeText(bytes: ByteArray): String {
+        if (bytes.size >= 2) {
+            val b0 = bytes[0].toInt() and 0xFF
+            val b1 = bytes[1].toInt() and 0xFF
+            if (b0 == 0xFF && b1 == 0xFE) {
+                return bytes.toString(Charsets.UTF_16LE)
+            }
+            if (b0 == 0xFE && b1 == 0xFF) {
+                return bytes.toString(Charsets.UTF_16BE)
+            }
+        }
         val utf8 = bytes.toString(Charsets.UTF_8)
         return if (utf8.contains('\uFFFD')) {
             bytes.toString(Charset.forName("GB18030"))

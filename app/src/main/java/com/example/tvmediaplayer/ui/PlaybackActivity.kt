@@ -29,7 +29,6 @@ import com.example.tvmediaplayer.playback.PlaybackConfigStore
 import com.example.tvmediaplayer.playback.PlaybackLyricsCache
 import com.example.tvmediaplayer.playback.PlaybackService
 import com.example.tvmediaplayer.playback.SmbContextFactory
-import com.example.tvmediaplayer.playback.SmbPathResolver
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import java.io.File
@@ -224,7 +223,7 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun maybeLoadLyrics(player: Player) {
         val mediaItem = player.currentMediaItem ?: return
-        val key = mediaItem.mediaId + "|" + mediaItem.localConfiguration?.uri
+        val key = mediaCacheKey(mediaItem)
         if (key == currentLyricKey) return
         currentLyricKey = key
         currentTimeline = null
@@ -296,7 +295,7 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun maybeLoadArtwork(player: Player) {
         val mediaItem = player.currentMediaItem ?: return
-        val artworkKey = mediaItem.mediaId + "|" + mediaItem.localConfiguration?.uri
+        val artworkKey = mediaCacheKey(mediaItem)
         if (artworkKey == currentArtworkKey) return
         currentArtworkKey = artworkKey
         PlaybackArtworkCache.get(artworkKey)?.let {
@@ -404,10 +403,6 @@ class PlaybackActivity : FragmentActivity() {
                 lyricsRepository.load(resolvePlaybackConfig(), entry)
             }.getOrNull()
             if (timeline != null && timeline.lines.isNotEmpty()) return timeline
-            val fallbackTimeline = runCatching {
-                loadExternalLrcFromStreamUri(resolvePlaybackConfig(), entry.streamUri.orEmpty())
-            }.getOrNull()
-            if (fallbackTimeline != null && fallbackTimeline.lines.isNotEmpty()) return fallbackTimeline
             if (attempt < 2) delay(250L * (attempt + 1))
         }
         return null
@@ -428,19 +423,8 @@ class PlaybackActivity : FragmentActivity() {
         PlaybackConfigStore.update(loaded)
     }
 
-    private fun loadExternalLrcFromStreamUri(config: SmbConfig, streamUri: String): LrcTimeline? {
-        if (!streamUri.startsWith("smb://", ignoreCase = true)) return null
-        val context = SmbContextFactory.build(config)
-        val entry = SmbEntry(
-            name = streamUri.substringAfterLast('/'),
-            fullPath = "",
-            isDirectory = false,
-            streamUri = streamUri
-        )
-        val lrcPath = SmbPathResolver.buildExternalLrcPath(config, entry)
-        val lrcFile = SmbFile(lrcPath, context)
-        if (!lrcFile.exists() || lrcFile.isDirectory) return null
-        val content = SmbFileInputStream(lrcFile).use { it.readBytes().toString(Charsets.UTF_8) }
-        return LrcParser.parseTimeline(content).takeIf { it.lines.isNotEmpty() }
+    private fun mediaCacheKey(mediaItem: MediaItem): String {
+        val uri = mediaItem.localConfiguration?.uri?.toString().orEmpty()
+        return if (uri.isNotBlank()) uri else mediaItem.mediaId
     }
 }

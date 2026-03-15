@@ -24,9 +24,12 @@ import com.example.tvmediaplayer.domain.model.SmbEntry
 import com.example.tvmediaplayer.lyrics.LrcParser
 import com.example.tvmediaplayer.lyrics.LrcTimeline
 import com.example.tvmediaplayer.lyrics.SmbLyricsRepository
+import com.example.tvmediaplayer.playback.PlaybackArtworkCache
 import com.example.tvmediaplayer.playback.PlaybackConfigStore
+import com.example.tvmediaplayer.playback.PlaybackLyricsCache
 import com.example.tvmediaplayer.playback.PlaybackService
 import com.example.tvmediaplayer.playback.SmbContextFactory
+import com.example.tvmediaplayer.playback.SmbPathResolver
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import java.io.File
@@ -225,6 +228,11 @@ class PlaybackActivity : FragmentActivity() {
         if (key == currentLyricKey) return
         currentLyricKey = key
         currentTimeline = null
+        PlaybackLyricsCache.get(key)?.let {
+            currentTimeline = it
+            renderLyrics(player.currentPosition)
+            return
+        }
         tvLyricPrev.text = ""
         tvLyricCurrent.text = "歌词加载中..."
         tvLyricNext.text = ""
@@ -263,6 +271,7 @@ class PlaybackActivity : FragmentActivity() {
                 tvLyricNext.text = ""
                 return@launch
             }
+            PlaybackLyricsCache.put(key, timeline)
             renderLyrics(player.currentPosition)
         }
     }
@@ -290,6 +299,10 @@ class PlaybackActivity : FragmentActivity() {
         val artworkKey = mediaItem.mediaId + "|" + mediaItem.localConfiguration?.uri
         if (artworkKey == currentArtworkKey) return
         currentArtworkKey = artworkKey
+        PlaybackArtworkCache.get(artworkKey)?.let {
+            ivArtwork.setImageBitmap(it)
+            return
+        }
         ivArtwork.setImageResource(R.drawable.ic_launcher_foreground)
 
         lifecycleScope.launch {
@@ -299,6 +312,7 @@ class PlaybackActivity : FragmentActivity() {
             if (currentArtworkKey != artworkKey) return@launch
             if (bitmap != null) {
                 ivArtwork.setImageBitmap(bitmap)
+                PlaybackArtworkCache.put(artworkKey, bitmap)
             } else {
                 ivArtwork.setImageResource(R.drawable.ic_launcher_foreground)
             }
@@ -390,6 +404,10 @@ class PlaybackActivity : FragmentActivity() {
                 lyricsRepository.load(resolvePlaybackConfig(), entry)
             }.getOrNull()
             if (timeline != null && timeline.lines.isNotEmpty()) return timeline
+            val fallbackTimeline = runCatching {
+                loadExternalLrcFromStreamUri(resolvePlaybackConfig(), entry.streamUri.orEmpty())
+            }.getOrNull()
+            if (fallbackTimeline != null && fallbackTimeline.lines.isNotEmpty()) return fallbackTimeline
             if (attempt < 2) delay(250L * (attempt + 1))
         }
         return null
@@ -408,5 +426,21 @@ class PlaybackActivity : FragmentActivity() {
         if (loaded.host.isBlank()) return
         fallbackConfig = loaded
         PlaybackConfigStore.update(loaded)
+    }
+
+    private fun loadExternalLrcFromStreamUri(config: SmbConfig, streamUri: String): LrcTimeline? {
+        if (!streamUri.startsWith("smb://", ignoreCase = true)) return null
+        val context = SmbContextFactory.build(config)
+        val entry = SmbEntry(
+            name = streamUri.substringAfterLast('/'),
+            fullPath = "",
+            isDirectory = false,
+            streamUri = streamUri
+        )
+        val lrcPath = SmbPathResolver.buildExternalLrcPath(config, entry)
+        val lrcFile = SmbFile(lrcPath, context)
+        if (!lrcFile.exists() || lrcFile.isDirectory) return null
+        val content = SmbFileInputStream(lrcFile).use { it.readBytes().toString(Charsets.UTF_8) }
+        return LrcParser.parseTimeline(content).takeIf { it.lines.isNotEmpty() }
     }
 }

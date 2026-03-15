@@ -76,3 +76,17 @@
 - 本轮验证：
   - `testDevDebugUnitTest --tests "*SampleMediaValidationTest"` 通过。
   - `assembleDevDebug` 通过。
+
+## 2026-03-15（第 7 轮）
+
+- 用户反馈：
+  - `Track9` 仍存在“歌词加载中后显示暂无歌词”。
+  - 封面已可显示但仍偏慢；返回文件页再回到播放页会重复加载封面。
+- 本轮方案（先测后改）：
+  - 新增 `SmbPathResolverTest`，先验证 share + 子目录 + `streamUri` 回退场景下外置 `.lrc` 路径构造正确。
+  - 抽离 `SmbPathResolver` 到公共层，歌词仓库与播放页兜底读取统一使用同一套路径算法。
+  - 播放页歌词新增进程内缓存 `PlaybackLyricsCache`，并在仓库失败时增加“基于 streamUri 的外置 LRC 直接读取”兜底。
+  - 播放页封面新增进程内缓存 `PlaybackArtworkCache`，返回再进时优先命中缓存，避免重复 SMB 读取。
+- 本轮验证：
+  - `testDevDebugUnitTest --tests "*SmbPathResolverTest" --tests "*SampleMediaValidationTest"` 通过。
+  - `assembleDevDebug` 通过。

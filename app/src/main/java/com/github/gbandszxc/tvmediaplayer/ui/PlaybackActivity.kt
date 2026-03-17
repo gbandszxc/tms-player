@@ -4,7 +4,6 @@ import android.content.ComponentName
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.util.Log
 import android.view.KeyEvent
 import android.widget.Button
 import android.widget.ImageView
@@ -46,10 +45,6 @@ import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 
 class PlaybackActivity : FragmentActivity() {
-
-    companion object {
-        private const val TAG = "PlaybackActivity"
-    }
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
@@ -255,7 +250,6 @@ class PlaybackActivity : FragmentActivity() {
         }
         val uri = mediaItem.localConfiguration?.uri?.toString().orEmpty()
         val fullPath = mediaItem.mediaId
-        Log.d(TAG, "maybeLoadLyrics: configHost=${config.host}, uri=$uri, fullPath=$fullPath")
         val fileName = fullPath.substringAfterLast('/').ifBlank {
             mediaItem.mediaMetadata.title?.toString().orEmpty()
         }
@@ -273,7 +267,6 @@ class PlaybackActivity : FragmentActivity() {
             if (currentLyricKey != key) return@launch
             currentTimeline = timeline
             if (timeline == null || timeline.lines.isEmpty()) {
-                Log.d(TAG, "maybeLoadLyrics: no lyrics for key=$key")
                 tvLyricCurrent.text = "暂无歌词"
                 tvLyricPrev.text = ""
                 tvLyricNext.text = ""

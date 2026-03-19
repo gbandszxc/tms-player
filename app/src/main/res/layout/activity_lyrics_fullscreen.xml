@@ -17,13 +17,16 @@
         android:ellipsize="end"
         android:fontFamily="@font/misans_bold" />
 
-    <ScrollView
+    <com.github.gbandszxc.tvmediaplayer.ui.NonFocusableScrollView
         android:id="@+id/scroll_lyrics"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:layout_marginTop="16dp"
-        android:fadeScrollbars="false">
+        android:fadeScrollbars="false"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:descendantFocusability="blocksDescendants">
 
         <TextView
             android:id="@+id/tv_fullscreen_lyrics"
@@ -32,8 +35,9 @@
             android:textColor="#CBD5E1"
             android:textSize="28sp"
             android:lineSpacingExtra="8dp"
-            android:fontFamily="@font/misans_regular" />
-    </ScrollView>
+            android:fontFamily="@font/misans_regular"
+            android:focusable="false" />
+    </com.github.gbandszxc.tvmediaplayer.ui.NonFocusableScrollView>
 
     <Button
         android:id="@+id/btn_close_fullscreen_lyrics"

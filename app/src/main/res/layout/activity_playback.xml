@@ -91,6 +91,7 @@
                 android:layout_marginTop="8dp"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
+                android:nextFocusDown="@id/btn_prev"
                 android:max="1000"
                 android:progressTint="#34D399"
                 android:progressBackgroundTint="#334155"
@@ -106,14 +107,17 @@
                 android:fontFamily="@font/misans_bold" />
 
             <!-- 歌词滚动区：与全屏逻辑一致，当前行高亮，自动滚动 -->
-            <ScrollView
+            <com.github.gbandszxc.tvmediaplayer.ui.NonFocusableScrollView
                 android:id="@+id/scroll_lyrics"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:layout_marginTop="10dp"
                 android:fadeScrollbars="false"
-                android:scrollbars="none">
+                android:scrollbars="none"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                android:descendantFocusability="blocksDescendants">
 
                 <TextView
                     android:id="@+id/tv_lyric_content"
@@ -122,8 +126,9 @@
                     android:textColor="#94A3B8"
                     android:textSize="20sp"
                     android:lineSpacingExtra="6dp"
-                    android:fontFamily="@font/misans_regular" />
-            </ScrollView>
+                    android:fontFamily="@font/misans_regular"
+                    android:focusable="false" />
+            </com.github.gbandszxc.tvmediaplayer.ui.NonFocusableScrollView>
         </LinearLayout>
     </LinearLayout>
 
@@ -145,6 +150,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:minWidth="100dp"
+                android:nextFocusUp="@id/pb_playback"
                 android:text="上一首"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
@@ -158,6 +164,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:minWidth="100dp"
+                android:nextFocusUp="@id/pb_playback"
                 android:text="播放"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
@@ -171,6 +178,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:minWidth="100dp"
+                android:nextFocusUp="@id/pb_playback"
                 android:text="下一首"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
@@ -184,6 +192,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:minWidth="120dp"
+                android:nextFocusUp="@id/pb_playback"
                 android:text="歌词全屏"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
@@ -197,6 +206,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:minWidth="120dp"
+                android:nextFocusUp="@id/pb_playback"
                 android:text="返回文件页"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"

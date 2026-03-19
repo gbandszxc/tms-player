@@ -27,7 +27,7 @@ object LastPlaybackStore {
             .putInt(KEY_INDEX, snapshot.currentIndex)
             .putLong(KEY_POSITION_MS, snapshot.positionMs)
             .putString(KEY_TITLE, snapshot.title)
-            .apply()
+            .commit()
     }
 
     fun load(context: Context): Snapshot? {

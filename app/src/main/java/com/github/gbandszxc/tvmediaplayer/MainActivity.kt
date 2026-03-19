@@ -1,11 +1,11 @@
 package com.github.gbandszxc.tvmediaplayer
 
 import android.os.Bundle
-import androidx.fragment.app.FragmentActivity
+import com.github.gbandszxc.tvmediaplayer.ui.BaseActivity
 import com.github.gbandszxc.tvmediaplayer.ui.TvBrowseFragment
 import com.github.gbandszxc.tvmediaplayer.ui.UiSettingsApplier
 
-class MainActivity : FragmentActivity() {
+class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -20,10 +20,5 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         UiSettingsApplier.applyAll(this)
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) UiSettingsApplier.applyImmersiveFullscreen(this)
     }
 }

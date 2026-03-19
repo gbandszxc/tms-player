@@ -13,13 +13,12 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import android.app.AlertDialog
-import androidx.fragment.app.FragmentActivity
 import com.github.gbandszxc.tvmediaplayer.R
 import com.github.gbandszxc.tvmediaplayer.playback.LastPlaybackStore
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackArtworkCache
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackLyricsCache
 
-class SettingsActivity : FragmentActivity() {
+class SettingsActivity : BaseActivity() {
 
     private data class SettingsItem(
         val title: String,
@@ -201,11 +200,6 @@ class SettingsActivity : FragmentActivity() {
         super.onResume()
         UiSettingsApplier.applyAll(this)
         rebuildCurrentCategory(moveFocusToDetail = false)
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) UiSettingsApplier.applyImmersiveFullscreen(this)
     }
 
     private fun buildCategoryList() {

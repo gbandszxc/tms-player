@@ -18,7 +18,6 @@ import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -54,7 +53,7 @@ import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 
-class PlaybackActivity : FragmentActivity() {
+class PlaybackActivity : BaseActivity() {
 
     private data class AudioTagInfo(
         val title: String?,
@@ -115,11 +114,6 @@ class PlaybackActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         applyUiSettings()
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) UiSettingsApplier.applyImmersiveFullscreen(this)
     }
 
     override fun onStart() {

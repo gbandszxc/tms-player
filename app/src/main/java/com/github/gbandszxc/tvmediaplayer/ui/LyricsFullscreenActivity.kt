@@ -13,7 +13,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -35,7 +34,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class LyricsFullscreenActivity : FragmentActivity() {
+class LyricsFullscreenActivity : BaseActivity() {
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
@@ -77,11 +76,6 @@ class LyricsFullscreenActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         applyUiSettings()
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) UiSettingsApplier.applyImmersiveFullscreen(this)
     }
 
     override fun onStart() {

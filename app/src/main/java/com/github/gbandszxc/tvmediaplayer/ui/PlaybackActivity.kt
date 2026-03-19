@@ -166,6 +166,35 @@ class PlaybackActivity : FragmentActivity() {
             renderLyrics(target)
             true
         }
+
+        pbProgress.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onStartTrackingTouch(seekBar: SeekBar) {
+                // 拖动开始时暂停进度自动刷新，避免进度条被播放器覆盖
+                progressJob?.cancel()
+            }
+
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val controller = mediaController ?: return
+                val duration = controller.duration
+                if (duration <= 0 || duration == C.TIME_UNSET) return
+                val targetMs = (progress.toLong() * duration) / 1000L
+                renderProgress(targetMs, duration)
+                renderLyrics(targetMs)
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                val controller = mediaController ?: run {
+                    startProgressTicker(); return
+                }
+                val duration = controller.duration
+                if (duration > 0 && duration != C.TIME_UNSET) {
+                    val targetMs = (seekBar.progress.toLong() * duration) / 1000L
+                    controller.seekTo(targetMs)
+                }
+                startProgressTicker()
+            }
+        })
     }
 
     private fun ensureController() {

@@ -13,6 +13,7 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -433,9 +434,13 @@ class TvBrowseFragment : Fragment() {
             addView(saveAsNewCheck)
         }
 
+        val scrollView = ScrollView(context).apply {
+            addView(container)
+        }
+
         AlertDialog.Builder(context)
             .setTitle("SMB 连接配置")
-            .setView(container)
+            .setView(scrollView)
             .setNegativeButton("取消", null)
             .setPositiveButton("保存并连接") { _, _ ->
                 val config = SmbConfig(

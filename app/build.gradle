@@ -34,19 +34,10 @@ android {
         }
     }
 
-    flavorDimensions += "device"
-    productFlavors {
-        dev {
-            dimension "device"
-            applicationIdSuffix ".dev"
-            versionNameSuffix "-dev"
-        }
-        tv {
-            dimension "device"
-        }
-    }
-
     buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+        }
         release {
             signingConfig signingConfigs.release
             minifyEnabled false
@@ -90,4 +81,3 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1'
 }
-

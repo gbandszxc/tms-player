@@ -75,6 +75,8 @@
 71. 版本升至 `1.0.1`（`versionCode=2`），包含封面与歌词加载修复。
 72. 已统一 APK 输出命名规则为 `tms-player-<buildType>-<versionName>.apk`（例如 `tms-player-debug-1.0.1.apk`、`tms-player-release-1.0.1.apk`）。
 73. 已补充 `.gitignore` 仓库忽略增强项：`*.pem/*.p12/*.crt/*.key`、`.env*`、常见系统/编辑器临时文件与本地 `.agent_prompt/` 工具目录，降低敏感信息与无关文件误提交风险。
+74. 已移除 product flavors（`dev`/`tv`），合并为标准 `debug`/`release` 两个构建变体；`debug` 包名后缀 `.debug`（支持与 release 并行安装），`android.software.leanback` 统一为 `required=false`，兼容 TV 与手机/平板侧载调试。
+75. 已优化多尺寸设备 UI 兼容性：SMB 配置弹窗内容区包裹 `ScrollView`（小屏可滚动填写全部字段）；浏览页和播放页的按钮栏改用 `HorizontalScrollView` 防溢出；播放页封面区由固定 340dp 改为权重 30% 自适应布局，适配手机横屏场景。
 
 ## 1. 当前项目定位
 
@@ -135,17 +137,14 @@ tv-media-player/
 在项目根目录执行（Windows PowerShell）：
 
 ```powershell
-# Dev Debug（推荐：手机/普通模拟器可见）
-.\gradlew.bat assembleDevDebug
+# Debug（TV 与手机/平板均可侧载，包名后缀 .debug）
+.\gradlew.bat assembleDebug
 
-# TV Debug（电视调试）
-.\gradlew.bat assembleTvDebug
+# Release（签名包，正式发布用）
+.\gradlew.bat assembleRelease
 
-# TV Release（标准）
-.\gradlew.bat assembleTvRelease
-
-# TV Release（规避 lintVital 依赖下载问题）
-.\gradlew.bat clean assembleTvRelease -x lintVitalAnalyzeRelease
+# Release（规避 lintVital 依赖下载问题）
+.\gradlew.bat clean assembleRelease -x lintVitalAnalyzeRelease
 
 # 清理
 .\gradlew.bat clean
@@ -160,31 +159,33 @@ cmd /c "set JAVA_HOME=C:\D\Develop\Java\jdk-17.0.16+8&& set PATH=%JAVA_HOME%\bin
 ## 4. 产物位置
 
 ```text
-Dev Debug: app\build\outputs\apk\dev\debug\tms-player-debug-<versionName>-dev.apk
-TV Debug:  app\build\outputs\apk\tv\debug\tms-player-debug-<versionName>.apk
-TV Release: app\build\outputs\apk\tv\release\tms-player-release-<versionName>.apk
+Debug:   app\build\outputs\apk\debug\tms-player-debug-<versionName>.apk
+Release: app\build\outputs\apk\release\tms-player-release-<versionName>.apk
 ```
 
 ## 5. Release 命令差异说明
 
-1. `.\gradlew.bat assembleTvRelease`
-直接执行 TV release 构建，沿用当前缓存，不主动清理；会包含 `lintVitalAnalyzeRelease`。
+1. `.\gradlew.bat assembleRelease`
+直接执行 release 构建，沿用当前缓存；会包含 `lintVitalAnalyzeRelease`。
 
-2. `.\gradlew.bat clean assembleTvRelease -x lintVitalAnalyzeRelease`
-先清理再全量构建，且跳过 `lintVitalAnalyzeRelease` 任务。适合你当前机器偶发的 TLS 握手失败场景（下载 lint 依赖中断）时使用。
+2. `.\gradlew.bat clean assembleRelease -x lintVitalAnalyzeRelease`
+先清理再全量构建，且跳过 `lintVitalAnalyzeRelease` 任务。适合当前机器偶发的 TLS 握手失败场景（下载 lint 依赖中断）时使用。
 
 3. 什么时候用哪条
-- 网络正常时优先用标准命令：`assembleTvRelease`
+- 网络正常时优先用标准命令：`assembleRelease`
 - 出现 `lintVitalAnalyzeRelease` 依赖下载失败时，用 `-x lintVitalAnalyzeRelease` 兜底打包
 
-## 6. Flavor 说明
+## 6. 构建变体说明
 
-1. `dev` flavor
-- 用于开发联调，`android.software.leanback` 在主清单中为 `required=false`，便于手机和普通模拟器显示图标。
+项目只有 `debug` 和 `release` 两个构建变体，不再区分 flavor：
 
-2. `tv` flavor
-- `app/src/tv/AndroidManifest.xml` 覆盖为 `android.software.leanback required=true`，保持 TV 设备约束。
-- 发布请使用 `tvRelease` 变体。
+1. `debug`
+- 包名：`com.github.gbandszxc.tvmediaplayer.debug`（带 `.debug` 后缀，可与 release 并行安装）
+- `android.software.leanback required=false`，可在手机/平板安装侧载调试
+
+2. `release`
+- 包名：`com.github.gbandszxc.tvmediaplayer`（正式包名）
+- 使用签名配置，`required=false` 同样兼容多设备安装
 ## 7. 签名配置与安全
 
 1. 项目已在 `app/build.gradle` 配置 `signingConfigs.release`。

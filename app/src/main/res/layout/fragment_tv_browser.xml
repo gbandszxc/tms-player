@@ -98,43 +98,50 @@
                     android:textSize="18sp"
                     android:fontFamily="@font/misans_medium" />
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
+                    android:scrollbars="none"
+                    android:fillViewport="false">
 
-                    <Button
-                        android:id="@+id/btn_refresh"
+                    <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:minWidth="130dp"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:ellipsize="end"
-                        android:text="刷新当前目录"
-                        android:textAllCaps="false"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:background="@drawable/bg_button_dark"
-                        android:fontFamily="@font/misans_medium" />
+                        android:orientation="horizontal">
 
-                    <Button
-                        android:id="@+id/btn_retry"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:minWidth="110dp"
-                        android:layout_marginStart="10dp"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:ellipsize="end"
-                        android:text="重试连接"
-                        android:textAllCaps="false"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:background="@drawable/bg_button_dark"
-                        android:fontFamily="@font/misans_medium" />
-                </LinearLayout>
+                        <Button
+                            android:id="@+id/btn_refresh"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="130dp"
+                            android:gravity="center"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:text="刷新当前目录"
+                            android:textAllCaps="false"
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
+                            android:background="@drawable/bg_button_dark"
+                            android:fontFamily="@font/misans_medium" />
+
+                        <Button
+                            android:id="@+id/btn_retry"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="110dp"
+                            android:layout_marginStart="10dp"
+                            android:gravity="center"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:text="重试连接"
+                            android:textAllCaps="false"
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
+                            android:background="@drawable/bg_button_dark"
+                            android:fontFamily="@font/misans_medium" />
+                    </LinearLayout>
+                </HorizontalScrollView>
 
                 <TextView
                     android:id="@+id/tv_status"
@@ -171,65 +178,72 @@
                     android:textSize="20sp"
                     android:fontFamily="@font/misans_bold" />
 
-                <LinearLayout
+                <HorizontalScrollView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:orientation="horizontal">
+                    android:scrollbars="none"
+                    android:fillViewport="false">
 
-                    <Button
-                        android:id="@+id/btn_play_all"
+                    <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:minWidth="130dp"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:ellipsize="end"
-                        android:text="顺序播放"
-                        android:textAllCaps="false"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:background="@drawable/bg_button_green"
-                        android:fontFamily="@font/misans_medium" />
+                        android:orientation="horizontal">
 
-                    <Button
-                        android:id="@+id/btn_play_shuffle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:minWidth="130dp"
-                        android:layout_marginStart="10dp"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:ellipsize="end"
-                        android:text="随机播放"
-                        android:textAllCaps="false"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:background="@drawable/bg_button_green"
-                        android:fontFamily="@font/misans_medium" />
+                        <Button
+                            android:id="@+id/btn_play_all"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="130dp"
+                            android:gravity="center"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:text="顺序播放"
+                            android:textAllCaps="false"
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
+                            android:background="@drawable/bg_button_green"
+                            android:fontFamily="@font/misans_medium" />
 
-                    <Button
-                        android:id="@+id/btn_now_playing"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:layout_weight="1"
-                        android:minWidth="180dp"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="14dp"
-                        android:gravity="center_vertical"
-                        android:singleLine="true"
-                        android:scrollHorizontally="true"
-                        android:ellipsize="marquee"
-                        android:marqueeRepeatLimit="marquee_forever"
-                        android:text="回到当前播放"
-                        android:textAllCaps="false"
-                        android:textColor="#3A2A00"
-                        android:textSize="16sp"
-                        android:background="@drawable/bg_button_light_yellow"
-                        android:fontFamily="@font/misans_medium"
-                        android:visibility="gone" />
-                </LinearLayout>
+                        <Button
+                            android:id="@+id/btn_play_shuffle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="130dp"
+                            android:layout_marginStart="10dp"
+                            android:gravity="center"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:text="随机播放"
+                            android:textAllCaps="false"
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
+                            android:background="@drawable/bg_button_green"
+                            android:fontFamily="@font/misans_medium" />
+
+                        <Button
+                            android:id="@+id/btn_now_playing"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:minWidth="180dp"
+                            android:maxWidth="320dp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:gravity="center_vertical"
+                            android:singleLine="true"
+                            android:scrollHorizontally="true"
+                            android:ellipsize="marquee"
+                            android:marqueeRepeatLimit="marquee_forever"
+                            android:text="回到当前播放"
+                            android:textAllCaps="false"
+                            android:textColor="#3A2A00"
+                            android:textSize="16sp"
+                            android:background="@drawable/bg_button_light_yellow"
+                            android:fontFamily="@font/misans_medium"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </HorizontalScrollView>
             </LinearLayout>
 
         </LinearLayout>

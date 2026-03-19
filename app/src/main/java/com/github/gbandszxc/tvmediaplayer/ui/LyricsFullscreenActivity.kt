@@ -7,6 +7,7 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
+import android.util.TypedValue
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
@@ -69,6 +70,12 @@ class LyricsFullscreenActivity : FragmentActivity() {
         tvLyrics = findViewById(R.id.tv_fullscreen_lyrics)
         btnClose = findViewById(R.id.btn_close_fullscreen_lyrics)
         btnClose.setOnClickListener { finish() }
+        applyUiSettings()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyUiSettings()
     }
 
     override fun onStart() {
@@ -108,6 +115,14 @@ class LyricsFullscreenActivity : FragmentActivity() {
                     }
             },
             MoreExecutors.directExecutor()
+        )
+    }
+
+    private fun applyUiSettings() {
+        UiSettingsApplier.applyAll(this)
+        tvLyrics.setTextSize(
+            TypedValue.COMPLEX_UNIT_SP,
+            UiSettingsStore.fullscreenLyricsFontSp(this).toFloat()
         )
     }
 

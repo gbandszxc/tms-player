@@ -9,6 +9,7 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
+import android.util.TypedValue
 import android.view.KeyEvent
 import android.widget.Button
 import android.widget.ImageView
@@ -106,7 +107,13 @@ class PlaybackActivity : FragmentActivity() {
         configStore = SmbConfigStore(applicationContext)
         setContentView(R.layout.activity_playback)
         bindViews()
+        applyUiSettings()
         bindActions()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyUiSettings()
     }
 
     override fun onStart() {
@@ -200,6 +207,14 @@ class PlaybackActivity : FragmentActivity() {
                 startProgressTicker()
             }
         })
+    }
+
+    private fun applyUiSettings() {
+        UiSettingsApplier.applyAll(this)
+        tvLyricContent.setTextSize(
+            TypedValue.COMPLEX_UNIT_SP,
+            UiSettingsStore.playbackLyricsFontSp(this).toFloat()
+        )
     }
 
     private fun ensureController() {

@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="#172554"
-    android:padding="16dp">
+    android:padding="20dp">
 
     <!-- 上方主内容区：封面 + 信息 -->
     <LinearLayout
@@ -36,7 +36,7 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="7"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="20dp"
             android:orientation="vertical">
 
             <TextView
@@ -54,7 +54,7 @@
                 android:id="@+id/tv_playback_artist"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="10dp"
                 android:text="艺术家：-"
                 android:textColor="#CBD5E1"
                 android:textSize="18sp"
@@ -66,7 +66,7 @@
                 android:id="@+id/tv_playback_album"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:text="专辑：-"
                 android:textColor="#CBD5E1"
                 android:textSize="18sp"
@@ -78,7 +78,7 @@
                 android:id="@+id/tv_playback_time"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="16dp"
                 android:text="00:00 / 00:00"
                 android:textColor="#EAF2FF"
                 android:textSize="16sp"
@@ -88,7 +88,7 @@
                 android:id="@+id/pb_playback"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="8dp"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:max="1000"
@@ -99,7 +99,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="16dp"
                 android:text="歌词："
                 android:textColor="#60A5FA"
                 android:textSize="18sp"
@@ -111,7 +111,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="10dp"
                 android:fadeScrollbars="false"
                 android:scrollbars="none">
 
@@ -120,8 +120,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textColor="#94A3B8"
-                    android:textSize="17sp"
-                    android:lineSpacingExtra="4dp"
+                    android:textSize="20sp"
+                    android:lineSpacingExtra="6dp"
                     android:fontFamily="@font/misans_regular" />
             </ScrollView>
         </LinearLayout>
@@ -131,7 +131,7 @@
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="16dp"
         android:scrollbars="none"
         android:fillViewport="false">
 

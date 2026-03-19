@@ -19,12 +19,15 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.github.gbandszxc.tvmediaplayer.R
 import com.github.gbandszxc.tvmediaplayer.domain.model.SmbConfig
 import com.github.gbandszxc.tvmediaplayer.domain.model.SmbEntry
+import com.github.gbandszxc.tvmediaplayer.playback.LastPlaybackStore
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackQueueBuilder
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackConfigStore
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackService
@@ -120,7 +123,11 @@ class TvBrowseFragment : Fragment() {
         btnPlayAll.setOnClickListener { playDirectory(shuffle = false) }
         btnPlayShuffle.setOnClickListener { playDirectory(shuffle = true) }
         btnNowPlaying.setOnClickListener {
-            startActivity(Intent(requireContext(), PlaybackActivity::class.java))
+            if (mediaController?.currentMediaItem != null) {
+                startActivity(Intent(requireContext(), PlaybackActivity::class.java))
+            } else {
+                resumeLastPlayback()
+            }
         }
 
         root.isFocusableInTouchMode = true
@@ -328,19 +335,75 @@ class TvBrowseFragment : Fragment() {
 
     private fun updateNowPlayingButton() {
         val controller = mediaController
-        val hasNowPlaying = controller?.currentMediaItem != null
-        btnNowPlaying.visibility = if (hasNowPlaying) View.VISIBLE else View.GONE
-        if (!hasNowPlaying) return
+        val hasActivePlaying = controller?.currentMediaItem != null
 
-        val title = controller?.mediaMetadata?.title?.toString().orEmpty()
-        btnNowPlaying.text = if (title.isBlank()) "回到当前播放" else "回到当前播放：$title"
-        btnNowPlaying.isSelected = true
+        if (hasActivePlaying) {
+            btnNowPlaying.visibility = View.VISIBLE
+            val title = controller?.mediaMetadata?.title?.toString().orEmpty()
+            btnNowPlaying.text = if (title.isBlank()) "回到当前播放" else "回到当前播放：$title"
+            return
+        }
+
+        val ctx = context ?: return
+        if (UiSettingsStore.rememberLastPlayback(ctx) && LastPlaybackStore.hasSnapshot(ctx)) {
+            val snapshot = LastPlaybackStore.load(ctx)
+            if (snapshot != null) {
+                btnNowPlaying.visibility = View.VISIBLE
+                btnNowPlaying.text = if (snapshot.title.isBlank()) "继续上次播放" else "继续上次播放：${snapshot.title}"
+                return
+            }
+        }
+
+        btnNowPlaying.visibility = View.GONE
     }
 
     private fun currentQueueUris(controller: MediaController): List<String> {
         return buildList {
             repeat(controller.mediaItemCount) { index ->
                 controller.getMediaItemAt(index).localConfiguration?.uri?.toString()?.let(::add)
+            }
+        }
+    }
+
+    private fun resumeLastPlayback() {
+        val context = requireContext()
+        val snapshot = LastPlaybackStore.load(context) ?: return
+        val controller = mediaController
+        if (controller == null) {
+            Toast.makeText(context, "播放器初始化中，请稍后重试", Toast.LENGTH_SHORT).show()
+            ensureController()
+            return
+        }
+
+        val config = viewModel.state.value.config
+        PlaybackConfigStore.update(config)
+
+        lifecycleScope.launch {
+            runCatching {
+                val mediaItems = snapshot.queueUris.mapIndexed { i, uri ->
+                    val mediaId = snapshot.queueMediaIds.getOrElse(i) { "" }
+                    val title = mediaId.substringAfterLast('/').substringBeforeLast('.')
+                    MediaItem.Builder()
+                        .setUri(uri)
+                        .setMediaId(mediaId)
+                        .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle(title.ifBlank { null })
+                                .build()
+                        )
+                        .build()
+                }
+                val index = snapshot.currentIndex.coerceIn(0, mediaItems.lastIndex)
+                controller.setMediaItems(mediaItems, index, snapshot.positionMs)
+                controller.prepare()
+            }.onSuccess {
+                startActivity(Intent(requireContext(), PlaybackActivity::class.java))
+            }.onFailure { ex ->
+                Toast.makeText(
+                    context,
+                    "恢复播放失败：${ex.message ?: "请检查 SMB 连接"}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }

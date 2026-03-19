@@ -23,6 +23,8 @@
 19. 多设备 UI 适配已补齐：配置弹窗可滚动、按钮栏横向滚动防溢出、播放页封面区改为自适应比例布局。
 20. 质量与交付补充：已新增关键单测（配置/错误映射/队列/歌词路径等）、`Track9` 样本验证、发布验收清单与图标批处理脚本。
 21. 版本里程碑：`1.0.0`（首版发布）、`1.0.1`（歌词/封面修复）、`1.0.2`（设置页与全局缩放修复）。
+22. 新增上次播放记忆功能：`LastPlaybackStore` 持久化队列 URIs/mediaIds/进度/标题；`PlaybackActivity.onStop` 时自动保存；浏览页黄色按钮在无活跃播放时显示"继续上次播放"，点击可恢复队列进度（不自动播放）并跳转播放页；设置-播放设置新增"记忆上次播放"开关（默认开启），播放设置下分【歌词】和【其它】两组。
+23. 歌词/封面缓存改为磁盘持久化：`PlaybackLyricsCache` 和 `PlaybackArtworkCache` 新增 `saveAsync/loadFromDisk/clearDisk/diskCacheSize` 接口，JSON 歌词存 `cacheDir/lyrics/`，JPEG 封面存 `cacheDir/artwork/`；PlaybackActivity 的 maybeLoadLyrics 和 maybeLoadArtwork 加入磁盘二级缓存查询；LyricsFullscreenActivity 修复 key 不一致问题（统一为 uri 优先）并接入同一缓存；设置新增"其它设置"分类，包含"清理缓存"条目，显示当前磁盘缓存大小。
 
 ## 1. 当前项目定位
 

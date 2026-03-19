@@ -24,6 +24,7 @@ import com.github.gbandszxc.tvmediaplayer.lyrics.LrcParser
 import com.github.gbandszxc.tvmediaplayer.lyrics.LrcTimeline
 import com.github.gbandszxc.tvmediaplayer.lyrics.SmbLyricsRepository
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackConfigStore
+import com.github.gbandszxc.tvmediaplayer.playback.PlaybackLyricsCache
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackService
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -141,14 +142,21 @@ class LyricsFullscreenActivity : FragmentActivity() {
         val title = mediaItem.mediaMetadata.title?.toString().orEmpty()
         tvTitle.text = if (title.isBlank()) "歌词全屏" else "歌词全屏 - $title"
 
-        val key = mediaItem.mediaId + "|" + mediaItem.localConfiguration?.uri
+        // key 与 PlaybackActivity 保持一致：uri 优先，否则 mediaId
+        val uri = mediaItem.localConfiguration?.uri?.toString().orEmpty()
+        val key = if (uri.isNotBlank()) uri else mediaItem.mediaId
         if (key == currentLyricKey) return
         currentLyricKey = key
         currentTimeline = null
+
+        // 内存缓存命中
+        PlaybackLyricsCache.get(key)?.let {
+            currentTimeline = it
+            renderLyrics(player.currentPosition)
+            return
+        }
         tvLyrics.text = "歌词加载中..."
 
-        val config = PlaybackConfigStore.current()
-        val uri = mediaItem.localConfiguration?.uri?.toString().orEmpty()
         val fullPath = mediaItem.mediaId
         val entry = SmbEntry(
             name = fullPath.substringAfterLast('/'),
@@ -158,6 +166,20 @@ class LyricsFullscreenActivity : FragmentActivity() {
         )
 
         lifecycleScope.launch {
+            // 磁盘缓存命中
+            val diskHit = withContext(Dispatchers.IO) {
+                PlaybackLyricsCache.loadFromDisk(applicationContext, key)
+            }
+            if (diskHit != null) {
+                if (currentLyricKey != key) return@launch
+                PlaybackLyricsCache.put(key, diskHit)
+                currentTimeline = diskHit
+                renderLyrics(player.currentPosition)
+                return@launch
+            }
+
+            // 从 SMB 加载
+            val config = PlaybackConfigStore.current()
             val timeline = withContext(Dispatchers.IO) {
                 runCatching { lyricsRepository.load(config, entry) }.getOrNull()
             }
@@ -167,6 +189,8 @@ class LyricsFullscreenActivity : FragmentActivity() {
                 tvLyrics.text = "暂无歌词"
                 return@launch
             }
+            PlaybackLyricsCache.put(key, timeline)
+            PlaybackLyricsCache.saveAsync(applicationContext, key, timeline)
             renderLyrics(player.currentPosition)
         }
     }

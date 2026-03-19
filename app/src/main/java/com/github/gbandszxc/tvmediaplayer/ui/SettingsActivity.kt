@@ -15,11 +15,15 @@ import android.widget.Toast
 import android.app.AlertDialog
 import androidx.fragment.app.FragmentActivity
 import com.github.gbandszxc.tvmediaplayer.R
+import com.github.gbandszxc.tvmediaplayer.playback.LastPlaybackStore
+import com.github.gbandszxc.tvmediaplayer.playback.PlaybackArtworkCache
+import com.github.gbandszxc.tvmediaplayer.playback.PlaybackLyricsCache
 
 class SettingsActivity : FragmentActivity() {
 
     private data class SettingsItem(
         val title: String,
+        val isGroupHeader: Boolean = false,
         val descriptionProvider: () -> String = { "" },
         val valueProvider: (() -> String)? = null,
         val iconResId: Int? = null,
@@ -59,6 +63,7 @@ class SettingsActivity : FragmentActivity() {
                 title = "播放设置",
                 itemsProvider = {
                     listOf(
+                        SettingsItem(title = "歌词", isGroupHeader = true),
                         SettingsItem(
                             title = "播放页歌词字号",
                             descriptionProvider = { "默认值 ${UiSettingsStore.defaultPlaybackLyricsFontSp}sp，可手动输入" },
@@ -82,6 +87,24 @@ class SettingsActivity : FragmentActivity() {
                                 defaultValue = UiSettingsStore.defaultFullscreenLyricsFontSp,
                                 onSave = { value -> UiSettingsStore.setFullscreenLyricsFontSp(this, value) }
                             )
+                        },
+                        SettingsItem(title = "其它", isGroupHeader = true),
+                        SettingsItem(
+                            title = "记忆上次播放",
+                            descriptionProvider = { "记录上次播放的曲目与进度，下次打开可一键继续" },
+                            valueProvider = {
+                                if (UiSettingsStore.rememberLastPlayback(this)) "已开启" else "已关闭"
+                            }
+                        ) {
+                            val next = !UiSettingsStore.rememberLastPlayback(this)
+                            UiSettingsStore.setRememberLastPlayback(this, next)
+                            if (!next) LastPlaybackStore.clear(this)
+                            Toast.makeText(
+                                this,
+                                if (next) "已开启记忆上次播放" else "已关闭记忆上次播放（已清除记录）",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            rebuildCurrentCategory(moveFocusToDetail = false)
                         }
                     )
                 }
@@ -105,6 +128,28 @@ class SettingsActivity : FragmentActivity() {
                                 if (next) "已开启休眠保护" else "已关闭休眠保护",
                                 Toast.LENGTH_SHORT
                             ).show()
+                            rebuildCurrentCategory(moveFocusToDetail = false)
+                        }
+                    )
+                }
+            ),
+            SettingsCategory(
+                title = "其它设置",
+                itemsProvider = {
+                    listOf(
+                        SettingsItem(
+                            title = "清理缓存",
+                            descriptionProvider = { "歌词与封面磁盘缓存，重启恢复播放时可跳过 SMB 加载" },
+                            valueProvider = {
+                                val total = PlaybackLyricsCache.diskCacheSize(this) +
+                                        PlaybackArtworkCache.diskCacheSize(this)
+                                val kb = total / 1024
+                                if (kb < 1024) "${kb} KB" else "${"%.1f".format(kb / 1024.0)} MB"
+                            }
+                        ) {
+                            PlaybackLyricsCache.clearDisk(this)
+                            PlaybackArtworkCache.clearDisk(this)
+                            Toast.makeText(this, "缓存已清除", Toast.LENGTH_SHORT).show()
                             rebuildCurrentCategory(moveFocusToDetail = false)
                         }
                     )
@@ -203,6 +248,24 @@ class SettingsActivity : FragmentActivity() {
 
         var firstEntryView: View? = null
         items.forEachIndexed { i, item ->
+            if (item.isGroupHeader) {
+                val groupHeaderView = TextView(this).apply {
+                    text = item.title
+                    setTextColor(0xFF94A3B8.toInt())
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    typeface = AppFonts.medium(this@SettingsActivity)
+                    val lp = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    lp.topMargin = dp(if (i == 0) 0 else 16)
+                    lp.bottomMargin = dp(4)
+                    layoutParams = lp
+                }
+                containerDetail.addView(groupHeaderView)
+                return@forEachIndexed
+            }
+
             val itemView = layoutInflater.inflate(
                 R.layout.item_settings_entry, containerDetail, false
             )
@@ -241,7 +304,7 @@ class SettingsActivity : FragmentActivity() {
                 }
             }
             containerDetail.addView(itemView)
-            if (i == 0) firstEntryView = itemView
+            if (firstEntryView == null) firstEntryView = itemView
         }
 
         if (moveFocusToDetail) {

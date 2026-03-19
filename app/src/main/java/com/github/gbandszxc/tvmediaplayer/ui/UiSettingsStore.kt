@@ -8,6 +8,7 @@ object UiSettingsStore {
     private const val KEY_PLAYBACK_LYRICS_FONT_SP = "playback_lyrics_font_sp"
     private const val KEY_FULLSCREEN_LYRICS_FONT_SP = "fullscreen_lyrics_font_sp"
     private const val KEY_KEEP_SCREEN_AWAKE = "keep_screen_awake"
+    private const val KEY_REMEMBER_LAST_PLAYBACK = "remember_last_playback"
 
     val globalScalePresets: IntArray = intArrayOf(90, 95, 100, 105, 110)
     const val defaultGlobalScalePercent: Int = 100
@@ -63,6 +64,14 @@ object UiSettingsStore {
 
     fun setKeepScreenAwake(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_KEEP_SCREEN_AWAKE, enabled).apply()
+    }
+
+    fun rememberLastPlayback(context: Context): Boolean {
+        return prefs(context).getBoolean(KEY_REMEMBER_LAST_PLAYBACK, true)
+    }
+
+    fun setRememberLastPlayback(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_REMEMBER_LAST_PLAYBACK, enabled).apply()
     }
 
     private fun prefs(context: Context) =

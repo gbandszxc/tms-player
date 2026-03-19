@@ -36,6 +36,7 @@ import com.github.gbandszxc.tvmediaplayer.playback.PlaybackArtworkCache
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackConfigStore
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackLyricsCache
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackService
+import com.github.gbandszxc.tvmediaplayer.playback.LastPlaybackStore
 import com.github.gbandszxc.tvmediaplayer.playback.SmbContextFactory
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -122,6 +123,7 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     override fun onStop() {
+        savePlaybackSnapshot()
         releaseController()
         super.onStop()
     }
@@ -319,6 +321,19 @@ class PlaybackActivity : FragmentActivity() {
         )
 
         lifecycleScope.launch {
+            // 先查磁盘缓存
+            val diskHit = withContext(Dispatchers.IO) {
+                PlaybackLyricsCache.loadFromDisk(applicationContext, key)
+            }
+            if (diskHit != null) {
+                if (currentLyricKey != key) return@launch
+                PlaybackLyricsCache.put(key, diskHit)
+                currentTimeline = diskHit
+                renderLyrics(player.currentPosition)
+                return@launch
+            }
+
+            // 磁盘未命中，从 SMB 加载
             val timeline = withContext(Dispatchers.IO) {
                 loadLyricsWithRetry(entry)
             }
@@ -329,6 +344,7 @@ class PlaybackActivity : FragmentActivity() {
                 return@launch
             }
             PlaybackLyricsCache.put(key, timeline)
+            PlaybackLyricsCache.saveAsync(applicationContext, key, timeline)
             renderLyrics(player.currentPosition)
         }
     }
@@ -386,6 +402,18 @@ class PlaybackActivity : FragmentActivity() {
         ivArtwork.setImageResource(R.drawable.default_cover)
 
         lifecycleScope.launch {
+            // 先查磁盘缓存
+            val diskHit = withContext(Dispatchers.IO) {
+                PlaybackArtworkCache.loadFromDisk(applicationContext, artworkKey)
+            }
+            if (diskHit != null) {
+                if (currentArtworkKey != artworkKey) return@launch
+                ivArtwork.setImageBitmap(diskHit)
+                PlaybackArtworkCache.put(artworkKey, diskHit)
+                return@launch
+            }
+
+            // 磁盘未命中，从 SMB 加载
             val bitmap = withContext(Dispatchers.IO) {
                 loadArtworkBitmap(resolvePlaybackConfig(), mediaItem)
             }
@@ -393,6 +421,7 @@ class PlaybackActivity : FragmentActivity() {
             if (bitmap != null) {
                 ivArtwork.setImageBitmap(bitmap)
                 PlaybackArtworkCache.put(artworkKey, bitmap)
+                PlaybackArtworkCache.saveAsync(applicationContext, artworkKey, bitmap)
             } else {
                 ivArtwork.setImageResource(R.drawable.default_cover)
             }
@@ -548,6 +577,33 @@ class PlaybackActivity : FragmentActivity() {
         val audioBuf = ByteArray(65536)
         val audioRead = input.read(audioBuf)
         if (audioRead > 0) output.write(audioBuf, 0, audioRead)
+    }
+
+    private fun savePlaybackSnapshot() {
+        if (!UiSettingsStore.rememberLastPlayback(this)) return
+        val controller = mediaController ?: return
+        if (controller.mediaItemCount == 0) return
+        val uris = buildList {
+            repeat(controller.mediaItemCount) { i ->
+                controller.getMediaItemAt(i).localConfiguration?.uri?.toString()?.let(::add)
+            }
+        }
+        val ids = buildList {
+            repeat(controller.mediaItemCount) { i ->
+                add(controller.getMediaItemAt(i).mediaId)
+            }
+        }
+        if (uris.isEmpty()) return
+        LastPlaybackStore.save(
+            this,
+            LastPlaybackStore.Snapshot(
+                queueUris = uris,
+                queueMediaIds = ids,
+                currentIndex = controller.currentMediaItemIndex,
+                positionMs = controller.currentPosition.coerceAtLeast(0L),
+                title = controller.mediaMetadata.title?.toString().orEmpty()
+            )
+        )
     }
 
     private fun releaseController() {

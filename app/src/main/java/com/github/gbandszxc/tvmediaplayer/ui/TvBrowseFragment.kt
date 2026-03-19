@@ -338,9 +338,8 @@ class TvBrowseFragment : Fragment() {
         val hasActivePlaying = controller?.currentMediaItem != null
 
         if (hasActivePlaying) {
-            btnNowPlaying.visibility = View.VISIBLE
             val title = controller?.mediaMetadata?.title?.toString().orEmpty()
-            btnNowPlaying.text = if (title.isBlank()) "回到当前播放" else "回到当前播放：$title"
+            showNowPlayingButton(if (title.isBlank()) "回到当前播放" else "回到当前播放：$title")
             return
         }
 
@@ -348,13 +347,19 @@ class TvBrowseFragment : Fragment() {
         if (UiSettingsStore.rememberLastPlayback(ctx) && LastPlaybackStore.hasSnapshot(ctx)) {
             val snapshot = LastPlaybackStore.load(ctx)
             if (snapshot != null) {
-                btnNowPlaying.visibility = View.VISIBLE
-                btnNowPlaying.text = if (snapshot.title.isBlank()) "继续上次播放" else "继续上次播放：${snapshot.title}"
+                showNowPlayingButton(if (snapshot.title.isBlank()) "继续上次播放" else "继续上次播放：${snapshot.title}")
                 return
             }
         }
 
         btnNowPlaying.visibility = View.GONE
+        btnNowPlaying.isSelected = false
+    }
+
+    private fun showNowPlayingButton(text: String) {
+        btnNowPlaying.text = text
+        btnNowPlaying.isSelected = true
+        btnNowPlaying.visibility = View.VISIBLE
     }
 
     private fun currentQueueUris(controller: MediaController): List<String> {

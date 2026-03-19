@@ -28,7 +28,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
-                android:src="@drawable/ic_launcher_foreground" />
+                android:src="@drawable/default_cover" />
         </com.github.gbandszxc.tvmediaplayer.ui.SquareFrameLayout>
 
         <!-- 信息区：占 70%，内部垂直排列，歌词 ScrollView 撑满剩余高度 -->

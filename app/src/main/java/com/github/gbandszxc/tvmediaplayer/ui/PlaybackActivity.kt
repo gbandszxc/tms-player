@@ -368,7 +368,7 @@ class PlaybackActivity : FragmentActivity() {
             ivArtwork.setImageBitmap(it)
             return
         }
-        ivArtwork.setImageResource(R.drawable.ic_launcher_foreground)
+        ivArtwork.setImageResource(R.drawable.default_cover)
 
         lifecycleScope.launch {
             val bitmap = withContext(Dispatchers.IO) {
@@ -379,7 +379,7 @@ class PlaybackActivity : FragmentActivity() {
                 ivArtwork.setImageBitmap(bitmap)
                 PlaybackArtworkCache.put(artworkKey, bitmap)
             } else {
-                ivArtwork.setImageResource(R.drawable.ic_launcher_foreground)
+                ivArtwork.setImageResource(R.drawable.default_cover)
             }
         }
     }

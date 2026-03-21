@@ -40,7 +40,7 @@
 ## 2. 关键文件结构（当前）
 
 ```text
-tv-media-player/
+tsm-player/
 ├─ MANUAL.md
 ├─ settings.gradle
 ├─ build.gradle

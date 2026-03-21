@@ -251,7 +251,13 @@ class PlaybackActivity : BaseActivity() {
         val album = player.mediaMetadata.albumTitle?.toString().orEmpty().ifBlank { "-" }
         tvArtist.text = "艺术家：$artist"
         tvAlbum.text = "专辑：$album"
-        btnPlayPause.text = if (player.isPlaying) "暂停" else "播放"
+        if (player.isPlaying) {
+            btnPlayPause.text = "暂停"
+            btnPlayPause.setBackgroundResource(R.drawable.bg_button_amber)
+        } else {
+            btnPlayPause.text = "播放"
+            btnPlayPause.setBackgroundResource(R.drawable.bg_button_green)
+        }
 
         renderProgress(player.currentPosition, player.duration)
         maybeLoadLyrics(player)

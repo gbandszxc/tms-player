@@ -124,6 +124,8 @@ class LyricsFullscreenActivity : BaseActivity() {
             TypedValue.COMPLEX_UNIT_SP,
             UiSettingsStore.fullscreenLyricsFontSp(this).toFloat()
         )
+        val spacing = UiSettingsStore.fullscreenLyricsLineSpacing(this).coerceAtLeast(1.0f)
+        tvLyrics.setLineSpacing(0f, spacing)
     }
 
     private fun startTicker() {

@@ -9,6 +9,8 @@ object UiSettingsStore {
     private const val KEY_FULLSCREEN_LYRICS_FONT_SP = "fullscreen_lyrics_font_sp"
     private const val KEY_KEEP_SCREEN_AWAKE = "keep_screen_awake"
     private const val KEY_REMEMBER_LAST_PLAYBACK = "remember_last_playback"
+    private const val KEY_PLAYBACK_LYRICS_LINE_SPACING = "playback_lyrics_line_spacing"
+    private const val KEY_FULLSCREEN_LYRICS_LINE_SPACING = "fullscreen_lyrics_line_spacing"
 
     val globalScalePresets: IntArray = intArrayOf(90, 95, 100, 105, 110)
     const val defaultGlobalScalePercent: Int = 100
@@ -16,6 +18,10 @@ object UiSettingsStore {
     const val defaultFullscreenLyricsFontSp: Int = 28
     const val minLyricsFontSp: Int = 14
     const val maxLyricsFontSp: Int = 56
+    const val defaultPlaybackLyricsLineSpacing: Float = 1.2f
+    const val defaultFullscreenLyricsLineSpacing: Float = 1.5f
+    const val minLyricsLineSpacing: Float = 1.0f
+    const val maxLyricsLineSpacing: Float = 3.0f
 
     fun globalScalePercent(context: Context): Int {
         val value = prefs(context).getInt(KEY_GLOBAL_SCALE_PERCENT, defaultGlobalScalePercent)
@@ -72,6 +78,28 @@ object UiSettingsStore {
 
     fun setRememberLastPlayback(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_REMEMBER_LAST_PLAYBACK, enabled).apply()
+    }
+
+    fun playbackLyricsLineSpacing(context: Context): Float {
+        val value = prefs(context).getFloat(KEY_PLAYBACK_LYRICS_LINE_SPACING, defaultPlaybackLyricsLineSpacing)
+        return value.coerceIn(minLyricsLineSpacing, maxLyricsLineSpacing)
+    }
+
+    fun setPlaybackLyricsLineSpacing(context: Context, value: Float) {
+        prefs(context).edit()
+            .putFloat(KEY_PLAYBACK_LYRICS_LINE_SPACING, value.coerceIn(minLyricsLineSpacing, maxLyricsLineSpacing))
+            .apply()
+    }
+
+    fun fullscreenLyricsLineSpacing(context: Context): Float {
+        val value = prefs(context).getFloat(KEY_FULLSCREEN_LYRICS_LINE_SPACING, defaultFullscreenLyricsLineSpacing)
+        return value.coerceIn(minLyricsLineSpacing, maxLyricsLineSpacing)
+    }
+
+    fun setFullscreenLyricsLineSpacing(context: Context, value: Float) {
+        prefs(context).edit()
+            .putFloat(KEY_FULLSCREEN_LYRICS_LINE_SPACING, value.coerceIn(minLyricsLineSpacing, maxLyricsLineSpacing))
+            .apply()
     }
 
     private fun prefs(context: Context) =

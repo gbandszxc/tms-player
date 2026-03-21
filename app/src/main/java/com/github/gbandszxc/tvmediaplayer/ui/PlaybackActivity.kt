@@ -216,6 +216,8 @@ class PlaybackActivity : BaseActivity() {
             TypedValue.COMPLEX_UNIT_SP,
             UiSettingsStore.playbackLyricsFontSp(this).toFloat()
         )
+        val spacing = UiSettingsStore.playbackLyricsLineSpacing(this).coerceAtLeast(1.0f)
+        tvLyricContent.setLineSpacing(0f, spacing)
     }
 
     private fun ensureController() {

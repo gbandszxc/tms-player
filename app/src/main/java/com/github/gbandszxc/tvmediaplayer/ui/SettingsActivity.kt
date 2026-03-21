@@ -87,6 +87,30 @@ class SettingsActivity : BaseActivity() {
                                 onSave = { value -> UiSettingsStore.setFullscreenLyricsFontSp(this, value) }
                             )
                         },
+                        SettingsItem(
+                            title = "播放页歌词间距",
+                            descriptionProvider = { "默认值 ${"%.1f".format(UiSettingsStore.defaultPlaybackLyricsLineSpacing)}x，范围 1.0 - 3.0" },
+                            valueProvider = { "${"%.1f".format(UiSettingsStore.playbackLyricsLineSpacing(this))}x" }
+                        ) {
+                            showLyricsSpacingDialog(
+                                title = "设置播放页歌词间距",
+                                currentValue = UiSettingsStore.playbackLyricsLineSpacing(this),
+                                defaultValue = UiSettingsStore.defaultPlaybackLyricsLineSpacing,
+                                onSave = { value -> UiSettingsStore.setPlaybackLyricsLineSpacing(this, value) }
+                            )
+                        },
+                        SettingsItem(
+                            title = "全屏歌词间距",
+                            descriptionProvider = { "默认值 ${"%.1f".format(UiSettingsStore.defaultFullscreenLyricsLineSpacing)}x，范围 1.0 - 3.0" },
+                            valueProvider = { "${"%.1f".format(UiSettingsStore.fullscreenLyricsLineSpacing(this))}x" }
+                        ) {
+                            showLyricsSpacingDialog(
+                                title = "设置全屏歌词间距",
+                                currentValue = UiSettingsStore.fullscreenLyricsLineSpacing(this),
+                                defaultValue = UiSettingsStore.defaultFullscreenLyricsLineSpacing,
+                                onSave = { value -> UiSettingsStore.setFullscreenLyricsLineSpacing(this, value) }
+                            )
+                        },
                         SettingsItem(title = "其它", isGroupHeader = true),
                         SettingsItem(
                             title = "记忆上次播放",
@@ -351,6 +375,50 @@ class SettingsActivity : BaseActivity() {
                 }
                 onSave(value)
                 Toast.makeText(this, "字号已设置为 ${value}sp", Toast.LENGTH_SHORT).show()
+                rebuildCurrentCategory(moveFocusToDetail = false)
+            }
+            .show()
+    }
+
+    private fun showLyricsSpacingDialog(
+        title: String,
+        currentValue: Float,
+        defaultValue: Float,
+        onSave: (Float) -> Unit
+    ) {
+        val input = EditText(this).apply {
+            hint = "输入间距（1.0 - 3.0）"
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText("%.1f".format(currentValue))
+            setSelectAllOnFocus(true)
+            typeface = AppFonts.regular(this@SettingsActivity)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(input)
+            .setNeutralButton("恢复默认(${"%.1f".format(defaultValue)})") { _, _ ->
+                onSave(defaultValue)
+                Toast.makeText(this, "已恢复默认间距 ${"%.1f".format(defaultValue)}x", Toast.LENGTH_SHORT).show()
+                rebuildCurrentCategory(moveFocusToDetail = false)
+            }
+            .setNegativeButton("取消", null)
+            .setPositiveButton("保存") { _, _ ->
+                val value = input.text.toString().trim().toFloatOrNull()
+                if (value == null) {
+                    Toast.makeText(this, "请输入有效数字", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                if (value < UiSettingsStore.minLyricsLineSpacing || value > UiSettingsStore.maxLyricsLineSpacing) {
+                    Toast.makeText(
+                        this,
+                        "间距范围需在 1.0 - 3.0",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@setPositiveButton
+                }
+                onSave(value)
+                Toast.makeText(this, "间距已设置为 ${"%.1f".format(value)}x", Toast.LENGTH_SHORT).show()
                 rebuildCurrentCategory(moveFocusToDetail = false)
             }
             .show()

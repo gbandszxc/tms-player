@@ -1,9 +1,9 @@
-package com.github.gbandszxc.tvmediaplayer.lyrics
+﻿package com.github.gbandszxc.tvmediaplayer.lyrics
 
 import com.github.gbandszxc.tvmediaplayer.domain.model.SmbConfig
 import com.github.gbandszxc.tvmediaplayer.domain.model.SmbEntry
+import com.github.gbandszxc.tvmediaplayer.playback.SmbAudioMetadataProbe
 import com.github.gbandszxc.tvmediaplayer.playback.SmbPathResolver
-import java.io.File
 import java.nio.charset.Charset
 import java.util.Properties
 import jcifs.CIFSContext
@@ -13,36 +13,80 @@ import jcifs.smb.NtlmPasswordAuthenticator
 import jcifs.smb.SmbFile
 import jcifs.smb.SmbFileInputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
-import org.jaudiotagger.audio.AudioFileIO
-import org.jaudiotagger.tag.FieldKey
 
 class SmbLyricsRepository {
 
-    suspend fun load(config: SmbConfig, entry: SmbEntry): LrcTimeline? = withContext(Dispatchers.IO) {
-        if (entry.isDirectory || entry.streamUri.isNullOrBlank()) return@withContext null
+    enum class Status {
+        FOUND,
+        MISS,
+        ERROR
+    }
+
+    data class LoadResult(
+        val status: Status,
+        val timeline: LrcTimeline? = null,
+    )
+
+    suspend fun load(config: SmbConfig, entry: SmbEntry): LrcTimeline? {
+        return loadDetailed(config, entry).timeline
+    }
+
+    suspend fun loadDetailed(config: SmbConfig, entry: SmbEntry): LoadResult = withContext(Dispatchers.IO) {
+        if (entry.isDirectory || entry.streamUri.isNullOrBlank()) {
+            return@withContext LoadResult(Status.MISS)
+        }
 
         val context = buildContext(config)
+        coroutineScope {
+            val externalDeferred = async { runCatching { loadExternalLrc(config, entry, context) } }
+            // 外置歌词先发起；若未快速命中，再并发内嵌探测。
+            val embeddedDeferred = async {
+                delay(150L)
+                runCatching { loadEmbeddedTimeline(config, entry) }
+            }
 
-        // 外置 .lrc 优先；异常不向上传播，确保失败后仍能降级到内嵌歌词
-        val external = runCatching { loadExternalLrc(config, entry, context) }.getOrNull()
-        if (external != null && external.lines.isNotEmpty()) return@withContext external
+            var externalDone = false
+            var embeddedDone = false
+            var hasError = false
 
-        val embedded = runCatching { loadEmbeddedLyrics(context, entry) }.getOrNull()
-        if (embedded.isNullOrBlank()) return@withContext null
+            while (!externalDone || !embeddedDone) {
+                val (which, result) = select<Pair<Int, Result<LrcTimeline?>>>() {
+                    if (!externalDone) {
+                        externalDeferred.onAwait { 1 to it }
+                    }
+                    if (!embeddedDone) {
+                        embeddedDeferred.onAwait { 2 to it }
+                    }
+                }
 
-        val maybeTimeline = LrcParser.parseTimeline(embedded)
-        if (maybeTimeline.lines.isNotEmpty()) maybeTimeline else LrcTimeline(
-            lines = listOf(LyricLine(0, embedded.trim())),
-            offsetMs = 0
-        )
+                when (which) {
+                    1 -> externalDone = true
+                    2 -> embeddedDone = true
+                }
+
+                val timeline = result.getOrNull()
+                if (timeline != null && timeline.lines.isNotEmpty()) {
+                    if (!externalDone) externalDeferred.cancel()
+                    if (!embeddedDone) embeddedDeferred.cancel()
+                    return@coroutineScope LoadResult(Status.FOUND, timeline)
+                }
+                if (result.isFailure) hasError = true
+            }
+
+            if (hasError) LoadResult(Status.ERROR) else LoadResult(Status.MISS)
+        }
     }
 
     private fun loadExternalLrc(config: SmbConfig, entry: SmbEntry, context: CIFSContext): LrcTimeline? {
         val candidates = linkedSetOf<String>()
         val stream = entry.streamUri.orEmpty()
 
-        // 策略1：直接把 streamUri 扩展名换成 .lrc（最快路径）
+        // 策略1：直接把 streamUri 扩展名替换为 .lrc（最快路径）
         if (stream.startsWith("smb://", ignoreCase = true)) {
             candidates.add(stream.substringBeforeLast('.', stream) + ".lrc")
         }
@@ -51,7 +95,6 @@ class SmbLyricsRepository {
         if (resolvedPath.isNotBlank()) candidates.add(resolvedPath)
 
         for (lrcPath in candidates) {
-            // 每个候选独立 catch，避免单个路径异常中断整个链路
             runCatching {
                 val lrcFile = SmbFile(lrcPath, context)
                 if (!lrcFile.exists() || lrcFile.isDirectory) return@runCatching
@@ -61,10 +104,7 @@ class SmbLyricsRepository {
             }
         }
 
-        // 策略3：精确路径未命中时遍历父目录做模糊匹配。
-        // 常见场景：语音识别/标注工具在相同文件名中混用了全角/半角字符
-        // （如 MP3 用 ！ U+FF01，而 LRC 用 ! U+0021），导致精确路径 exists=false。
-        // normalizeWidth 将全角 ASCII 统一转半角后再比较，同时忽略大小写。
+        // 策略3：精确路径未命中时遍历父目录做模糊匹配（全半角归一化 + 忽略大小写）
         if (stream.startsWith("smb://", ignoreCase = true)) {
             val baseName = stream.substringAfterLast('/').substringBeforeLast('.')
             val parentUrl = stream.substringBeforeLast('/') + "/"
@@ -86,22 +126,21 @@ class SmbLyricsRepository {
         return null
     }
 
-    private fun loadEmbeddedLyrics(context: CIFSContext, entry: SmbEntry): String? {
-        val smbFile = SmbFile(requireNotNull(entry.streamUri), context)
-        // jaudiotagger 根据文件扩展名选解析器，必须使用真实扩展名，.tmp 会导致 CannotReadException
-        val ext = entry.streamUri!!.substringAfterLast('.', "").lowercase()
-            .let { if (it.isBlank() || it.length > 8) "mp3" else it }
-        val tempFile = File.createTempFile("lyrics-", ".$ext")
-        return try {
-            SmbFileInputStream(smbFile).use { it.copyTo(tempFile.outputStream()) }
-            val tag = AudioFileIO.read(tempFile).tag ?: return null
-            tag.getFirst(FieldKey.LYRICS).takeIf { it.isNotBlank() }
-        } finally {
-            tempFile.delete()
+    private suspend fun loadEmbeddedTimeline(config: SmbConfig, entry: SmbEntry): LrcTimeline? {
+        val embedded = SmbAudioMetadataProbe.probe(config, entry.streamUri.orEmpty())?.lyrics
+        if (embedded.isNullOrBlank()) return null
+
+        val maybeTimeline = LrcParser.parseTimeline(embedded)
+        return if (maybeTimeline.lines.isNotEmpty()) {
+            maybeTimeline
+        } else {
+            LrcTimeline(
+                lines = listOf(LyricLine(0, embedded.trim())),
+                offsetMs = 0
+            )
         }
     }
 
-    /** 全角 ASCII（U+FF01‥U+FF5E）→ 半角（U+0021‥U+007E），用于文件名模糊匹配 */
     private fun normalizeWidth(s: String) = s.map { c ->
         if (c.code in 0xFF01..0xFF5E) (c.code - 0xFF01 + 0x0021).toChar() else c
     }.joinToString("")

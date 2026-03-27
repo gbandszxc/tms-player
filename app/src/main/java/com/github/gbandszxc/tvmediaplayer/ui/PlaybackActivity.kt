@@ -36,13 +36,10 @@ import com.github.gbandszxc.tvmediaplayer.playback.PlaybackConfigStore
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackLyricsCache
 import com.github.gbandszxc.tvmediaplayer.playback.PlaybackService
 import com.github.gbandszxc.tvmediaplayer.playback.LastPlaybackStore
+import com.github.gbandszxc.tvmediaplayer.playback.SmbAudioMetadataProbe
 import com.github.gbandszxc.tvmediaplayer.playback.SmbContextFactory
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
-import java.io.OutputStream
 import jcifs.smb.SmbFile
 import jcifs.smb.SmbFileInputStream
 import kotlinx.coroutines.Dispatchers
@@ -51,22 +48,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.jaudiotagger.audio.AudioFileIO
-import org.jaudiotagger.tag.FieldKey
 
 class PlaybackActivity : BaseActivity() {
-
-    private companion object {
-        private const val MP4_TAG_PROBE_BYTES = 8L * 1024 * 1024
-        private const val OGG_TAG_PROBE_BYTES = 2L * 1024 * 1024
-        private const val FLAC_MAX_METADATA_BYTES = 32L * 1024 * 1024
-        private const val FLAC_POST_METADATA_AUDIO_BYTES = 16L * 1024
-    }
 
     private data class AudioTagInfo(
         val title: String?,
         val artist: String?,
         val albumTitle: String?
+    )
+
+    private data class LyricsLoadOutcome(
+        val timeline: LrcTimeline?,
+        val isMiss: Boolean,
     )
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -307,8 +300,13 @@ class PlaybackActivity : BaseActivity() {
         currentLyricKey = key
         currentTimeline = null
         PlaybackLyricsCache.get(key)?.let {
+            PlaybackLyricsCache.clearMiss(applicationContext, key)
             currentTimeline = it
             renderLyrics(player.currentPosition)
+            return
+        }
+        if (PlaybackLyricsCache.isMissCached(applicationContext, key)) {
+            tvLyricContent.text = "暂无歌词"
             return
         }
         tvLyricContent.text = "歌词加载中..."
@@ -343,23 +341,28 @@ class PlaybackActivity : BaseActivity() {
             if (diskHit != null) {
                 if (currentLyricKey != key) return@launch
                 PlaybackLyricsCache.put(key, diskHit)
+                PlaybackLyricsCache.clearMiss(applicationContext, key)
                 currentTimeline = diskHit
                 renderLyrics(player.currentPosition)
                 return@launch
             }
 
             // 磁盘未命中，从 SMB 加载
-            val timeline = withContext(Dispatchers.IO) {
+            val outcome = withContext(Dispatchers.IO) {
                 loadLyricsWithRetry(entry)
             }
             if (currentLyricKey != key) return@launch
-            currentTimeline = timeline
-            if (timeline == null || timeline.lines.isEmpty()) {
+            currentTimeline = outcome.timeline
+            if (outcome.timeline == null || outcome.timeline.lines.isEmpty()) {
+                if (outcome.isMiss) {
+                    PlaybackLyricsCache.markMissAsync(applicationContext, key)
+                }
                 tvLyricContent.text = "暂无歌词"
                 return@launch
             }
-            PlaybackLyricsCache.put(key, timeline)
-            PlaybackLyricsCache.saveAsync(applicationContext, key, timeline)
+            PlaybackLyricsCache.put(key, outcome.timeline)
+            PlaybackLyricsCache.clearMiss(applicationContext, key)
+            PlaybackLyricsCache.saveAsync(applicationContext, key, outcome.timeline)
             renderLyrics(player.currentPosition)
         }
     }
@@ -478,26 +481,17 @@ class PlaybackActivity : BaseActivity() {
         }
     }
 
-    private fun loadAudioTagInfo(mediaUri: String, config: SmbConfig): AudioTagInfo? = runCatching {
-        if (!mediaUri.startsWith("smb://", ignoreCase = true)) return@runCatching null
-        val smbFile = SmbFile(mediaUri, SmbContextFactory.build(config))
-        val ext = mediaUri.substringAfterLast('.', "").lowercase()
-        val suffix = if (ext.isBlank() || ext.length > 8) "tmp" else ext
-        val temp = File.createTempFile("tags-", ".$suffix")
-        try {
-            val fastUsed = copySmbForMetadataProbe(smbFile, temp, suffix, fastPath = true)
-            var info = extractAudioTagInfo(temp)
-            if (info == null && fastUsed) {
-                copySmbForMetadataProbe(smbFile, temp, suffix, fastPath = false)
-                info = extractAudioTagInfo(temp)
-            }
-            info
-        } finally {
-            temp.delete()
-        }
+    private suspend fun loadAudioTagInfo(mediaUri: String, config: SmbConfig): AudioTagInfo? = runCatching {
+        val metadata = SmbAudioMetadataProbe.probe(config, mediaUri) ?: return@runCatching null
+        if (metadata.title == null && metadata.artist == null && metadata.album == null) return@runCatching null
+        AudioTagInfo(
+            title = metadata.title,
+            artist = metadata.artist,
+            albumTitle = metadata.album,
+        )
     }.getOrNull()
 
-    private fun loadArtworkBitmap(config: SmbConfig, mediaItem: MediaItem) = runCatching {
+    private suspend fun loadArtworkBitmap(config: SmbConfig, mediaItem: MediaItem) = runCatching {
         val artworkUri = mediaItem.mediaMetadata.artworkUri?.toString().orEmpty()
         if (artworkUri.isNotBlank()) {
             loadSmbBitmap(artworkUri, config)?.let { return@runCatching it }
@@ -536,192 +530,10 @@ class PlaybackActivity : BaseActivity() {
         SmbFileInputStream(smbFile).use { stream -> BitmapFactory.decodeStream(stream) }
     }.getOrNull()
 
-    private fun loadEmbeddedArtwork(mediaSmbUrl: String, config: SmbConfig) = runCatching {
-        val smbFile = SmbFile(mediaSmbUrl, SmbContextFactory.build(config))
-        val ext = mediaSmbUrl.substringAfterLast('.', "").lowercase()
-        val suffix = if (ext.isBlank() || ext.length > 8) "tmp" else ext
-        val temp = File.createTempFile("artwork-", ".$suffix")
-        try {
-            val fastUsed = copySmbForMetadataProbe(smbFile, temp, suffix, fastPath = true)
-            var artwork = runCatching { AudioFileIO.read(temp).tag?.firstArtwork }.getOrNull()
-            if (artwork == null && fastUsed) {
-                copySmbForMetadataProbe(smbFile, temp, suffix, fastPath = false)
-                artwork = runCatching { AudioFileIO.read(temp).tag?.firstArtwork }.getOrNull()
-            }
-            artwork ?: return@runCatching null
-            BitmapFactory.decodeByteArray(artwork.binaryData, 0, artwork.binaryData.size)
-        } finally {
-            temp.delete()
-        }
+    private suspend fun loadEmbeddedArtwork(mediaSmbUrl: String, config: SmbConfig) = runCatching {
+        val artwork = SmbAudioMetadataProbe.probe(config, mediaSmbUrl)?.artworkData ?: return@runCatching null
+        BitmapFactory.decodeByteArray(artwork, 0, artwork.size)
     }.getOrNull()
-
-    private fun copySmbForMetadataProbe(
-        smbFile: SmbFile,
-        temp: File,
-        suffix: String,
-        fastPath: Boolean,
-    ): Boolean {
-        SmbFileInputStream(smbFile).use { input ->
-            FileOutputStream(temp, false).use { output ->
-                if (!fastPath) {
-                    input.copyTo(output)
-                    return false
-                }
-                return copyFastMetadataProbe(input, output, suffix)
-            }
-        }
-    }
-
-    private fun extractAudioTagInfo(temp: File): AudioTagInfo? {
-        val tag = runCatching { AudioFileIO.read(temp).tag }.getOrNull() ?: return null
-        val title = tag.getFirst(FieldKey.TITLE).takeIf { it.isNotBlank() }
-        val artist = tag.getFirst(FieldKey.ARTIST).takeIf { it.isNotBlank() }
-        val album = tag.getFirst(FieldKey.ALBUM).takeIf { it.isNotBlank() }
-        if (title == null && artist == null && album == null) return null
-        return AudioTagInfo(
-            title = title,
-            artist = artist,
-            albumTitle = album,
-        )
-    }
-
-    private fun copyFastMetadataProbe(
-        input: InputStream,
-        output: OutputStream,
-        suffix: String,
-    ): Boolean {
-        return when (suffix) {
-            "mp3" -> {
-                copyId3TagRegion(input, output)
-                true
-            }
-
-            "flac" -> copyFlacMetadataRegion(input, output)
-
-            "m4a", "mp4", "m4b", "aac", "alac" -> {
-                copyLimited(input, output, MP4_TAG_PROBE_BYTES)
-                true
-            }
-
-            "ogg", "opus" -> {
-                copyLimited(input, output, OGG_TAG_PROBE_BYTES)
-                true
-            }
-
-            else -> {
-                input.copyTo(output)
-                false
-            }
-        }
-    }
-
-    private fun copyFlacMetadataRegion(input: InputStream, output: OutputStream): Boolean {
-        val signature = ByteArray(4)
-        val signatureRead = input.readFully(signature)
-        output.write(signature, 0, signatureRead)
-        if (signatureRead < 4) {
-            input.copyTo(output)
-            return false
-        }
-        if (
-            signature[0] != 'f'.code.toByte() ||
-            signature[1] != 'L'.code.toByte() ||
-            signature[2] != 'a'.code.toByte() ||
-            signature[3] != 'C'.code.toByte()
-        ) {
-            input.copyTo(output)
-            return false
-        }
-
-        var copiedMetadataBytes = 0L
-        var isLastBlock = false
-        val blockHeader = ByteArray(4)
-        while (!isLastBlock) {
-            val headerRead = input.readFully(blockHeader)
-            if (headerRead < 4) return true
-            output.write(blockHeader)
-
-            isLastBlock = (blockHeader[0].toInt() and 0x80) != 0
-            val blockLength =
-                ((blockHeader[1].toInt() and 0xFF) shl 16) or
-                ((blockHeader[2].toInt() and 0xFF) shl 8) or
-                (blockHeader[3].toInt() and 0xFF)
-
-            if (blockLength > 0) {
-                copyExactly(input, output, blockLength.toLong())
-                copiedMetadataBytes += blockLength.toLong()
-                if (copiedMetadataBytes >= FLAC_MAX_METADATA_BYTES) break
-            }
-        }
-
-        copyLimited(input, output, FLAC_POST_METADATA_AUDIO_BYTES)
-        return true
-    }
-
-    private fun copyExactly(input: InputStream, output: OutputStream, bytes: Long) {
-        var remaining = bytes
-        val buffer = ByteArray(8192)
-        while (remaining > 0) {
-            val n = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
-            if (n <= 0) break
-            output.write(buffer, 0, n)
-            remaining -= n
-        }
-    }
-
-    private fun copyLimited(input: InputStream, output: OutputStream, bytes: Long) {
-        copyExactly(input, output, bytes)
-    }
-
-    private fun InputStream.readFully(buffer: ByteArray): Int {
-        var total = 0
-        while (total < buffer.size) {
-            val n = read(buffer, total, buffer.size - total)
-            if (n <= 0) break
-            total += n
-        }
-        return total
-    }
-
-    /**
-     * MP3 专用：只把 ID3v2 tag 区域复制到 output，跳过后续音频数据。
-     * ID3v2 封面在文件头部，通常几十到几百 KB，远小于完整音频文件。
-     * 若文件没有 ID3v2 header 则回退复制全部内容。
-     */
-    private fun copyId3TagRegion(input: InputStream, output: OutputStream) {
-        val header = ByteArray(10)
-        var totalRead = 0
-        while (totalRead < 10) {
-            val n = input.read(header, totalRead, 10 - totalRead)
-            if (n < 0) break
-            totalRead += n
-        }
-        output.write(header, 0, totalRead)
-        if (totalRead < 10) { input.copyTo(output); return }
-        // 检查 "ID3" 标识
-        if (header[0] != 0x49.toByte() || header[1] != 0x44.toByte() || header[2] != 0x33.toByte()) {
-            input.copyTo(output); return
-        }
-        // ID3v2 tag size 使用 syncsafe integer（每字节只用低7位）
-        val tagContentSize =
-            ((header[6].toInt() and 0x7F) shl 21) or
-            ((header[7].toInt() and 0x7F) shl 14) or
-            ((header[8].toInt() and 0x7F) shl  7) or
-             (header[9].toInt() and 0x7F)
-        var remaining = tagContentSize.toLong()
-        val buf = ByteArray(8192)
-        while (remaining > 0) {
-            val n = input.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
-            if (n < 0) break
-            output.write(buf, 0, n)
-            remaining -= n
-        }
-        // jaudiotagger 解析 MP3 需要在 tag 后找到音频帧 sync word，
-        // 多读 64KB 确保它能找到第一个音频帧（stream 仍在 tag 末尾位置）。
-        val audioBuf = ByteArray(65536)
-        val audioRead = input.read(audioBuf)
-        if (audioRead > 0) output.write(audioBuf, 0, audioRead)
-    }
 
     private fun savePlaybackSnapshot() {
         if (!UiSettingsStore.rememberLastPlayback(this)) return
@@ -777,15 +589,26 @@ class PlaybackActivity : BaseActivity() {
         }
     }
 
-    private suspend fun loadLyricsWithRetry(entry: SmbEntry): LrcTimeline? {
+    private suspend fun loadLyricsWithRetry(entry: SmbEntry): LyricsLoadOutcome {
         repeat(3) { attempt ->
-            val timeline = runCatching {
-                lyricsRepository.load(resolvePlaybackConfig(), entry)
+            val result = runCatching {
+                lyricsRepository.loadDetailed(resolvePlaybackConfig(), entry)
             }.getOrNull()
-            if (timeline != null && timeline.lines.isNotEmpty()) return timeline
-            if (attempt < 2) delay(250L * (attempt + 1))
+            when (result?.status) {
+                SmbLyricsRepository.Status.FOUND -> {
+                    return LyricsLoadOutcome(result.timeline, isMiss = false)
+                }
+
+                SmbLyricsRepository.Status.MISS -> {
+                    return LyricsLoadOutcome(null, isMiss = true)
+                }
+
+                SmbLyricsRepository.Status.ERROR, null -> {
+                    if (attempt < 2) delay(250L * (attempt + 1))
+                }
+            }
         }
-        return null
+        return LyricsLoadOutcome(null, isMiss = false)
     }
 
     private suspend fun resolvePlaybackConfig(): SmbConfig {

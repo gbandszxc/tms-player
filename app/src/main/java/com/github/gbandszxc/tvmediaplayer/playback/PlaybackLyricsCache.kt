@@ -14,7 +14,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 object PlaybackLyricsCache {
 
+    private const val DEFAULT_NEGATIVE_TTL_MS = 10 * 60 * 1000L
     private val memory = ConcurrentHashMap<String, LrcTimeline>()
+    private val negativeMemory = ConcurrentHashMap<String, Long>()
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /** 查内存缓存 */
@@ -23,12 +25,16 @@ object PlaybackLyricsCache {
     /** 仅写内存缓存 */
     fun put(key: String, timeline: LrcTimeline) {
         memory[key] = timeline
+        negativeMemory.remove(key)
     }
 
     /** 异步将 timeline 写入磁盘（在 ioScope 中执行，调用方无需切线程） */
     fun saveAsync(context: Context, key: String, timeline: LrcTimeline) {
         ioScope.launch {
-            runCatching { cacheFile(context, key).writeText(serialize(timeline)) }
+            runCatching {
+                cacheFile(context, key).writeText(serialize(timeline))
+                missFile(context, key).delete()
+            }
         }
     }
 
@@ -42,9 +48,48 @@ object PlaybackLyricsCache {
         deserialize(file.readText())
     }.getOrNull()
 
+    fun markMissAsync(context: Context, key: String, ttlMs: Long = DEFAULT_NEGATIVE_TTL_MS) {
+        val expiresAt = System.currentTimeMillis() + ttlMs
+        negativeMemory[key] = expiresAt
+        ioScope.launch {
+            runCatching {
+                missFile(context, key).writeText(expiresAt.toString())
+            }
+        }
+    }
+
+    fun clearMiss(context: Context, key: String) {
+        negativeMemory.remove(key)
+        runCatching { missFile(context, key).delete() }
+    }
+
+    fun isMissCached(context: Context, key: String): Boolean {
+        val now = System.currentTimeMillis()
+        val memoryExpiresAt = negativeMemory[key]
+        if (memoryExpiresAt != null) {
+            if (memoryExpiresAt > now) return true
+            negativeMemory.remove(key)
+        }
+
+        val file = missFile(context, key)
+        if (!file.exists()) return false
+        val expiresAt = file.readText().trim().toLongOrNull() ?: run {
+            file.delete()
+            return false
+        }
+        return if (expiresAt > now) {
+            negativeMemory[key] = expiresAt
+            true
+        } else {
+            file.delete()
+            false
+        }
+    }
+
     /** 清空内存和磁盘缓存 */
     fun clearDisk(context: Context) {
         memory.clear()
+        negativeMemory.clear()
         lyricsCacheDir(context).deleteRecursively()
     }
 
@@ -60,6 +105,12 @@ object PlaybackLyricsCache {
     private fun cacheFile(context: Context, key: String): File {
         val hash = key.hashCode()
         val name = if (hash >= 0) "p$hash.json" else "n${-hash}.json"
+        return File(lyricsCacheDir(context), name)
+    }
+
+    private fun missFile(context: Context, key: String): File {
+        val hash = key.hashCode()
+        val name = if (hash >= 0) "p$hash.miss" else "n${-hash}.miss"
         return File(lyricsCacheDir(context), name)
     }
 

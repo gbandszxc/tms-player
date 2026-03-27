@@ -152,8 +152,13 @@ class LyricsFullscreenActivity : BaseActivity() {
 
         // 内存缓存命中
         PlaybackLyricsCache.get(key)?.let {
+            PlaybackLyricsCache.clearMiss(applicationContext, key)
             currentTimeline = it
             renderLyrics(player.currentPosition)
+            return
+        }
+        if (PlaybackLyricsCache.isMissCached(applicationContext, key)) {
+            tvLyrics.text = "暂无歌词"
             return
         }
         tvLyrics.text = "歌词加载中..."
@@ -174,6 +179,7 @@ class LyricsFullscreenActivity : BaseActivity() {
             if (diskHit != null) {
                 if (currentLyricKey != key) return@launch
                 PlaybackLyricsCache.put(key, diskHit)
+                PlaybackLyricsCache.clearMiss(applicationContext, key)
                 currentTimeline = diskHit
                 renderLyrics(player.currentPosition)
                 return@launch
@@ -182,16 +188,21 @@ class LyricsFullscreenActivity : BaseActivity() {
             // 从 SMB 加载
             val config = PlaybackConfigStore.current()
             val timeline = withContext(Dispatchers.IO) {
-                runCatching { lyricsRepository.load(config, entry) }.getOrNull()
+                runCatching { lyricsRepository.loadDetailed(config, entry) }.getOrNull()
             }
             if (currentLyricKey != key) return@launch
-            currentTimeline = timeline
-            if (timeline == null || timeline.lines.isEmpty()) {
+            val loadedTimeline = timeline?.timeline
+            currentTimeline = loadedTimeline
+            if (loadedTimeline == null || loadedTimeline.lines.isEmpty()) {
+                if (timeline?.status == SmbLyricsRepository.Status.MISS) {
+                    PlaybackLyricsCache.markMissAsync(applicationContext, key)
+                }
                 tvLyrics.text = "暂无歌词"
                 return@launch
             }
-            PlaybackLyricsCache.put(key, timeline)
-            PlaybackLyricsCache.saveAsync(applicationContext, key, timeline)
+            PlaybackLyricsCache.put(key, loadedTimeline)
+            PlaybackLyricsCache.clearMiss(applicationContext, key)
+            PlaybackLyricsCache.saveAsync(applicationContext, key, loadedTimeline)
             renderLyrics(player.currentPosition)
         }
     }

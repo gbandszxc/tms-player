@@ -26,6 +26,7 @@
 22. 新增上次播放记忆功能：`LastPlaybackStore` 持久化队列 URIs/mediaIds/进度/标题；`PlaybackActivity.onStop` 时自动保存；浏览页黄色按钮在无活跃播放时显示"继续上次播放"，点击可恢复队列进度（不自动播放）并跳转播放页；设置-播放设置新增"记忆上次播放"开关（默认开启），播放设置下分【歌词】和【其它】两组。
 23. 歌词/封面缓存改为磁盘持久化：`PlaybackLyricsCache` 和 `PlaybackArtworkCache` 新增 `saveAsync/loadFromDisk/clearDisk/diskCacheSize` 接口，JSON 歌词存 `cacheDir/lyrics/`，JPEG 封面存 `cacheDir/artwork/`；PlaybackActivity 的 maybeLoadLyrics 和 maybeLoadArtwork 加入磁盘二级缓存查询；LyricsFullscreenActivity 修复 key 不一致问题（统一为 uri 优先）并接入同一缓存；设置新增"其它设置"分类，包含"清理缓存"条目，显示当前磁盘缓存大小。
 24. SMB 封面/标签提速扩展到多格式：`PlaybackActivity` 新增“按扩展名快速探测 + 失败自动回退全量读取”机制；`mp3` 继续走 ID3v2 区域拷贝，`flac` 读取 STREAMINFO/PICTURE 等元数据块，`m4a/mp4/m4b/aac/alac` 与 `ogg/opus` 先读取限定前缀字节探测，若未解析到标签或封面则自动回退全量读取，保证兼容性。
+25. 歌词加载性能优化（2026-03-27）：新增 `SmbAudioMetadataProbe` 统一 SMB 元数据快速探测（标题/艺术家/专辑/封面/内嵌歌词）并带并发去重，`PlaybackActivity` 的标签/封面改为复用该探测结果；`SmbLyricsRepository` 改为“外置 `.lrc` 先发起 + 内嵌延迟并发，先成功先返回”；歌词重试改为“仅异常重试、未命中不重试”；`PlaybackLyricsCache` 新增无歌词负缓存（内存+磁盘短 TTL），避免反复打开同一无歌词文件重复走 SMB 慢路径。
 
 ## 1. 当前项目定位
 

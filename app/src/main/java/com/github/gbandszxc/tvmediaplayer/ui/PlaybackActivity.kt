@@ -40,6 +40,7 @@ import com.github.gbandszxc.tvmediaplayer.playback.SmbContextFactory
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import jcifs.smb.SmbFile
@@ -54,6 +55,13 @@ import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 
 class PlaybackActivity : BaseActivity() {
+
+    private companion object {
+        private const val MP4_TAG_PROBE_BYTES = 8L * 1024 * 1024
+        private const val OGG_TAG_PROBE_BYTES = 2L * 1024 * 1024
+        private const val FLAC_MAX_METADATA_BYTES = 32L * 1024 * 1024
+        private const val FLAC_POST_METADATA_AUDIO_BYTES = 16L * 1024
+    }
 
     private data class AudioTagInfo(
         val title: String?,
@@ -477,17 +485,13 @@ class PlaybackActivity : BaseActivity() {
         val suffix = if (ext.isBlank() || ext.length > 8) "tmp" else ext
         val temp = File.createTempFile("tags-", ".$suffix")
         try {
-            SmbFileInputStream(smbFile).use { input ->
-                temp.outputStream().use { output ->
-                    if (suffix == "mp3") copyId3TagRegion(input, output) else input.copyTo(output)
-                }
+            val fastUsed = copySmbForMetadataProbe(smbFile, temp, suffix, fastPath = true)
+            var info = extractAudioTagInfo(temp)
+            if (info == null && fastUsed) {
+                copySmbForMetadataProbe(smbFile, temp, suffix, fastPath = false)
+                info = extractAudioTagInfo(temp)
             }
-            val tag = AudioFileIO.read(temp).tag ?: return@runCatching null
-            AudioTagInfo(
-                title = tag.getFirst(FieldKey.TITLE).takeIf { it.isNotBlank() },
-                artist = tag.getFirst(FieldKey.ARTIST).takeIf { it.isNotBlank() },
-                albumTitle = tag.getFirst(FieldKey.ALBUM).takeIf { it.isNotBlank() }
-            )
+            info
         } finally {
             temp.delete()
         }
@@ -538,17 +542,146 @@ class PlaybackActivity : BaseActivity() {
         val suffix = if (ext.isBlank() || ext.length > 8) "tmp" else ext
         val temp = File.createTempFile("artwork-", ".$suffix")
         try {
-            SmbFileInputStream(smbFile).use { input ->
-                temp.outputStream().use { output ->
-                    if (suffix == "mp3") copyId3TagRegion(input, output) else input.copyTo(output)
-                }
+            val fastUsed = copySmbForMetadataProbe(smbFile, temp, suffix, fastPath = true)
+            var artwork = runCatching { AudioFileIO.read(temp).tag?.firstArtwork }.getOrNull()
+            if (artwork == null && fastUsed) {
+                copySmbForMetadataProbe(smbFile, temp, suffix, fastPath = false)
+                artwork = runCatching { AudioFileIO.read(temp).tag?.firstArtwork }.getOrNull()
             }
-            val artwork = AudioFileIO.read(temp).tag?.firstArtwork ?: return@runCatching null
+            artwork ?: return@runCatching null
             BitmapFactory.decodeByteArray(artwork.binaryData, 0, artwork.binaryData.size)
         } finally {
             temp.delete()
         }
     }.getOrNull()
+
+    private fun copySmbForMetadataProbe(
+        smbFile: SmbFile,
+        temp: File,
+        suffix: String,
+        fastPath: Boolean,
+    ): Boolean {
+        SmbFileInputStream(smbFile).use { input ->
+            FileOutputStream(temp, false).use { output ->
+                if (!fastPath) {
+                    input.copyTo(output)
+                    return false
+                }
+                return copyFastMetadataProbe(input, output, suffix)
+            }
+        }
+    }
+
+    private fun extractAudioTagInfo(temp: File): AudioTagInfo? {
+        val tag = runCatching { AudioFileIO.read(temp).tag }.getOrNull() ?: return null
+        val title = tag.getFirst(FieldKey.TITLE).takeIf { it.isNotBlank() }
+        val artist = tag.getFirst(FieldKey.ARTIST).takeIf { it.isNotBlank() }
+        val album = tag.getFirst(FieldKey.ALBUM).takeIf { it.isNotBlank() }
+        if (title == null && artist == null && album == null) return null
+        return AudioTagInfo(
+            title = title,
+            artist = artist,
+            albumTitle = album,
+        )
+    }
+
+    private fun copyFastMetadataProbe(
+        input: InputStream,
+        output: OutputStream,
+        suffix: String,
+    ): Boolean {
+        return when (suffix) {
+            "mp3" -> {
+                copyId3TagRegion(input, output)
+                true
+            }
+
+            "flac" -> copyFlacMetadataRegion(input, output)
+
+            "m4a", "mp4", "m4b", "aac", "alac" -> {
+                copyLimited(input, output, MP4_TAG_PROBE_BYTES)
+                true
+            }
+
+            "ogg", "opus" -> {
+                copyLimited(input, output, OGG_TAG_PROBE_BYTES)
+                true
+            }
+
+            else -> {
+                input.copyTo(output)
+                false
+            }
+        }
+    }
+
+    private fun copyFlacMetadataRegion(input: InputStream, output: OutputStream): Boolean {
+        val signature = ByteArray(4)
+        val signatureRead = input.readFully(signature)
+        output.write(signature, 0, signatureRead)
+        if (signatureRead < 4) {
+            input.copyTo(output)
+            return false
+        }
+        if (
+            signature[0] != 'f'.code.toByte() ||
+            signature[1] != 'L'.code.toByte() ||
+            signature[2] != 'a'.code.toByte() ||
+            signature[3] != 'C'.code.toByte()
+        ) {
+            input.copyTo(output)
+            return false
+        }
+
+        var copiedMetadataBytes = 0L
+        var isLastBlock = false
+        val blockHeader = ByteArray(4)
+        while (!isLastBlock) {
+            val headerRead = input.readFully(blockHeader)
+            if (headerRead < 4) return true
+            output.write(blockHeader)
+
+            isLastBlock = (blockHeader[0].toInt() and 0x80) != 0
+            val blockLength =
+                ((blockHeader[1].toInt() and 0xFF) shl 16) or
+                ((blockHeader[2].toInt() and 0xFF) shl 8) or
+                (blockHeader[3].toInt() and 0xFF)
+
+            if (blockLength > 0) {
+                copyExactly(input, output, blockLength.toLong())
+                copiedMetadataBytes += blockLength.toLong()
+                if (copiedMetadataBytes >= FLAC_MAX_METADATA_BYTES) break
+            }
+        }
+
+        copyLimited(input, output, FLAC_POST_METADATA_AUDIO_BYTES)
+        return true
+    }
+
+    private fun copyExactly(input: InputStream, output: OutputStream, bytes: Long) {
+        var remaining = bytes
+        val buffer = ByteArray(8192)
+        while (remaining > 0) {
+            val n = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+            if (n <= 0) break
+            output.write(buffer, 0, n)
+            remaining -= n
+        }
+    }
+
+    private fun copyLimited(input: InputStream, output: OutputStream, bytes: Long) {
+        copyExactly(input, output, bytes)
+    }
+
+    private fun InputStream.readFully(buffer: ByteArray): Int {
+        var total = 0
+        while (total < buffer.size) {
+            val n = read(buffer, total, buffer.size - total)
+            if (n <= 0) break
+            total += n
+        }
+        return total
+    }
 
     /**
      * MP3 专用：只把 ID3v2 tag 区域复制到 output，跳过后续音频数据。
